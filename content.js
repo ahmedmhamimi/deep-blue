@@ -8,23 +8,29 @@
   // Wait for the page to fully load
   window.addEventListener('load', function() {
     setTimeout(addButtons, 1500);
+    setTimeout(addTokenCounters, 2500);
   });
 
-  // Also watch for DOM changes in case the UI loads dynamically
+  // Use a debounced observer to prevent infinite loops
+  let observerTimeout = null;
   const observer = new MutationObserver(function(mutations) {
-    for (const mutation of mutations) {
-      if (mutation.type === 'childList' || mutation.type === 'subtree') {
-        const attachButton = findAttachButton();
-        if (attachButton) {
-          const exportButton = document.getElementById('deepblue-export-pdf-btn');
-          const counter = document.getElementById('deepblue-char-counter');
-          if (!exportButton || !counter) {
-            addButtons();
-          }
-          break;
+    // Debounce to prevent multiple rapid calls
+    if (observerTimeout) {
+      clearTimeout(observerTimeout);
+    }
+    observerTimeout = setTimeout(() => {
+      const attachButton = findAttachButton();
+      if (attachButton) {
+        const exportButton = document.getElementById('deepblue-export-pdf-btn');
+        const counter = document.getElementById('deepblue-char-counter');
+        if (!exportButton || !counter) {
+          addButtons();
         }
       }
-    }
+      // Only add token counters if there are new messages
+      addTokenCounters();
+      observerTimeout = null;
+    }, 500);
   });
 
   observer.observe(document.body, {
@@ -54,6 +60,107 @@
     return document.querySelector('textarea._27c9245, textarea[placeholder*="Message DeepSeek"]');
   }
 
+  // Simple and safe token counter
+  function countTokens(text) {
+    if (!text || text.length === 0) return 0;
+
+    // Simple approximation: ~4 characters per token for English text
+    // This is safe and won't cause performance issues
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    if (cleanText.length === 0) return 0;
+
+    // Rough estimation: characters / 4 is a common approximation
+    // Add some buffer for special characters
+    const estimatedTokens = Math.max(1, Math.round(cleanText.length / 4));
+    return estimatedTokens;
+  }
+
+  // Track which messages already have token counters
+  let processedMessages = new WeakSet();
+
+  // Function to add token counters to messages
+  function addTokenCounters() {
+    try {
+      const messages = document.querySelectorAll('.ds-message._63c77b1');
+
+      messages.forEach((message) => {
+        // Skip if already has a token counter
+        if (processedMessages.has(message)) return;
+        if (message.querySelector('.deepblue-token-counter')) {
+          processedMessages.add(message);
+          return;
+        }
+
+        // Only add to assistant messages (not user messages)
+        const isAssistant = !message.classList.contains('d29f3d7d') &&
+        !message.querySelector('.fbb737a4');
+
+        if (!isAssistant) return;
+
+        // Get the message content
+        const markdown = message.querySelector('.ds-markdown');
+        if (!markdown) return;
+
+        const textContent = markdown.textContent || '';
+        const tokenCount = countTokens(textContent);
+
+        // Find the action buttons container
+        const actionContainer = message.parentElement?.querySelector('.ds-flex._0a3d93b, ._0a3d93b');
+        if (!actionContainer) return;
+
+        // Find the flex container that holds the buttons
+        const buttonContainer = actionContainer.querySelector('.ds-flex._965abe9');
+        if (!buttonContainer) return;
+
+        // Create token counter element
+        const tokenCounter = document.createElement('div');
+        tokenCounter.className = 'deepblue-token-counter';
+        tokenCounter.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #8e8e93;
+        padding: 0 6px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        user-select: none;
+        height: 28px;
+        letter-spacing: 0.2px;
+        opacity: 0.7;
+        border-left: 1px solid #e9ecf0;
+        margin-left: 4px;
+        padding-left: 10px;
+        `;
+        tokenCounter.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
+        <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
+        <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
+        </svg>
+        <span>${tokenCount}</span>
+        <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
+        `;
+        tokenCounter.title = `Estimated tokens: ${tokenCount}`;
+
+        // Insert before the share button or at the end of the button container
+        const shareButton = buttonContainer.querySelector('.ds-button[title*="Share"]') ||
+        buttonContainer.querySelector('.ds-button:last-child');
+
+        if (shareButton) {
+          buttonContainer.insertBefore(tokenCounter, shareButton);
+        } else {
+          buttonContainer.appendChild(tokenCounter);
+        }
+
+        // Mark as processed
+        processedMessages.add(message);
+      });
+    } catch (e) {
+      // Silently fail - don't crash the page
+      console.debug('Token counter error:', e);
+    }
+  }
+
   // Function to update character count
   function updateCharCount(textarea) {
     if (!textarea) return;
@@ -77,124 +184,110 @@
 
   // Combined function to add both buttons in correct order
   function addButtons() {
-    // Don't add duplicates
-    if (document.getElementById('deepblue-export-pdf-btn') && document.getElementById('deepblue-char-counter')) {
-      return;
-    }
+    try {
+      // Don't add duplicates
+      if (document.getElementById('deepblue-export-pdf-btn') && document.getElementById('deepblue-char-counter')) {
+        return;
+      }
 
-    const attachButtonContainer = findAttachButton();
-    if (!attachButtonContainer) {
-      return;
-    }
+      const attachButtonContainer = findAttachButton();
+      if (!attachButtonContainer) {
+        return;
+      }
 
-    // Get the parent container (this is the ec4f5d61 div)
-    const parentContainer = attachButtonContainer.parentNode;
+      // Get the parent container (this is the ec4f5d61 div)
+      const parentContainer = attachButtonContainer.parentNode;
 
-    // Create export button
-    const exportBtn = document.createElement('div');
-    exportBtn.id = 'deepblue-export-pdf-btn';
-    exportBtn.setAttribute('role', 'button');
-    exportBtn.setAttribute('tabindex', '0');
-    exportBtn.className = 'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
-    exportBtn.style.cssText = '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
-    exportBtn.title = `Export conversation as PDF (${BRAND_NAME})`;
-    exportBtn.innerHTML = `
-    <div class="ds-button__background"></div>
-    <div class="ds-button__icon ds-button__icon--last-child">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-    </svg>
-    </div>
-    `;
-    exportBtn.addEventListener('click', exportConversationAsPDF);
+      // Create export button
+      const exportBtn = document.createElement('div');
+      exportBtn.id = 'deepblue-export-pdf-btn';
+      exportBtn.setAttribute('role', 'button');
+      exportBtn.setAttribute('tabindex', '0');
+      exportBtn.className = 'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
+      exportBtn.style.cssText = '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
+      exportBtn.title = `Export conversation as PDF (${BRAND_NAME})`;
+      exportBtn.innerHTML = `
+      <div class="ds-button__background"></div>
+      <div class="ds-button__icon ds-button__icon--last-child">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      </div>
+      `;
+      exportBtn.addEventListener('click', exportConversationAsPDF);
 
-    // Create character counter
-    const counter = document.createElement('div');
-    counter.id = 'deepblue-char-counter';
-    counter.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #8e8e93;
-    padding: 0 6px 0 4px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    user-select: none;
-    flex-shrink: 0;
-    height: 34px;
-    letter-spacing: 0.2px;
-    `;
-    counter.innerHTML = `<span id="deepblue-char-count">0</span><span>characters</span>`;
-    counter.title = 'Character count';
+      // Create character counter
+      const counter = document.createElement('div');
+      counter.id = 'deepblue-char-counter';
+      counter.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8e8e93;
+      padding: 0 6px 0 4px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+      flex-shrink: 0;
+      height: 34px;
+      letter-spacing: 0.2px;
+      `;
+      counter.innerHTML = `<span id="deepblue-char-count">0</span><span>characters</span>`;
+      counter.title = 'Character count';
 
-    // Insert export button before attach button
-    if (exportBtn && !document.getElementById('deepblue-export-pdf-btn')) {
-      parentContainer.insertBefore(exportBtn, attachButtonContainer);
-    }
+      // Insert export button before attach button
+      if (exportBtn && !document.getElementById('deepblue-export-pdf-btn')) {
+        parentContainer.insertBefore(exportBtn, attachButtonContainer);
+      }
 
-    // Insert counter before attach button (after export button)
-    if (counter && !document.getElementById('deepblue-char-counter')) {
-      parentContainer.insertBefore(counter, attachButtonContainer);
-    }
+      // Insert counter before attach button (after export button)
+      if (counter && !document.getElementById('deepblue-char-counter')) {
+        parentContainer.insertBefore(counter, attachButtonContainer);
+      }
 
-    // Set up character counter with multiple event listeners
-    const textarea = findTextarea();
-    if (textarea) {
-      // Initial update
-      updateCharCount(textarea);
+      // Set up character counter with multiple event listeners
+      const textarea = findTextarea();
+      if (textarea) {
+        // Initial update
+        updateCharCount(textarea);
 
-      // Listen for user input
-      textarea.addEventListener('input', function() {
-        updateCharCount(this);
-      });
+        // Listen for user input
+        textarea.addEventListener('input', function() {
+          updateCharCount(this);
+        });
 
-      textarea.addEventListener('change', function() {
-        updateCharCount(this);
-      });
-
-      // Listen for programmatic changes (like when send clears the textarea)
-      // Using MutationObserver to watch for value changes
-      const textareaObserver = new MutationObserver(function(mutations) {
-        for (const mutation of mutations) {
-          if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-            updateCharCount(textarea);
+        // Listen for programmatic changes
+        const textareaObserver = new MutationObserver(function(mutations) {
+          for (const mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+              updateCharCount(textarea);
+            }
           }
-        }
-      });
+        });
 
-      textareaObserver.observe(textarea, {
-        attributes: true,
-        attributeFilter: ['value']
-      });
+        textareaObserver.observe(textarea, {
+          attributes: true,
+          attributeFilter: ['value']
+        });
 
-      // Also listen for the send button click to update after sending
-      const sendButton = document.querySelector('.ds-button.ds-button--primary.ds-button--filled.ds-button--circle .ds-button__icon')?.closest('.ds-button');
-      if (sendButton) {
-        sendButton.addEventListener('click', function() {
-          // Small delay to let the textarea clear
-          setTimeout(() => {
-            updateCharCount(textarea);
-          }, 50);
+        // Also listen for the send button click
+        document.addEventListener('click', function(e) {
+          const target = e.target;
+          if (target.closest && target.closest('.ds-button.ds-button--primary.ds-button--filled.ds-button--circle')) {
+            setTimeout(() => {
+              updateCharCount(textarea);
+            }, 50);
+          }
         });
       }
 
-      // Also watch for any click on the parent container that might trigger a send
-      document.addEventListener('click', function(e) {
-        // Check if click is on or inside the send button area
-        const target = e.target;
-        if (target.closest && target.closest('.ds-button.ds-button--primary.ds-button--filled.ds-button--circle')) {
-          setTimeout(() => {
-            updateCharCount(textarea);
-          }, 50);
-        }
-      });
+      console.log(`${BRAND_NAME} Buttons added!`);
+    } catch (e) {
+      console.debug('Button addition error:', e);
     }
-
-    console.log(`${BRAND_NAME} Buttons added!`);
-    console.log('Order: DeepThink/Search -> Export button -> Counter -> Clip button');
   }
 
   // Legacy function for backward compatibility
