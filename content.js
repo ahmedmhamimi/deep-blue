@@ -7,7 +7,7 @@
 
   // Wait for the page to fully load
   window.addEventListener('load', function() {
-    setTimeout(addExportButton, 1500);
+    setTimeout(addButtons, 1500);
   });
 
   // Also watch for DOM changes in case the UI loads dynamically
@@ -15,9 +15,12 @@
     for (const mutation of mutations) {
       if (mutation.type === 'childList' || mutation.type === 'subtree') {
         const attachButton = findAttachButton();
-        const exportButton = document.getElementById('deepblue-export-pdf-btn');
-        if (attachButton && !exportButton) {
-          addExportButton();
+        if (attachButton) {
+          const exportButton = document.getElementById('deepblue-export-pdf-btn');
+          const counter = document.getElementById('deepblue-char-counter');
+          if (!exportButton || !counter) {
+            addButtons();
+          }
           break;
         }
       }
@@ -46,9 +49,36 @@
     return null;
   }
 
-  // Function to add the export button to the LEFT of the clip button
-  function addExportButton() {
-    if (document.getElementById('deepblue-export-pdf-btn')) {
+  // Function to find the textarea input
+  function findTextarea() {
+    return document.querySelector('textarea._27c9245, textarea[placeholder*="Message DeepSeek"]');
+  }
+
+  // Function to update character count
+  function updateCharCount(textarea) {
+    if (!textarea) return;
+
+    const countSpan = document.getElementById('deepblue-char-count');
+    const counter = document.getElementById('deepblue-char-counter');
+    if (!countSpan || !counter) return;
+
+    const count = textarea.value.length;
+    countSpan.textContent = count;
+
+    // Color coding based on character count
+    if (count > 1000) {
+      counter.style.color = '#ff6b6b';
+    } else if (count > 500) {
+      counter.style.color = '#feca57';
+    } else {
+      counter.style.color = '#8e8e93';
+    }
+  }
+
+  // Combined function to add both buttons in correct order
+  function addButtons() {
+    // Don't add duplicates
+    if (document.getElementById('deepblue-export-pdf-btn') && document.getElementById('deepblue-char-counter')) {
       return;
     }
 
@@ -57,15 +87,17 @@
       return;
     }
 
-    // Create the export button
+    // Get the parent container (this is the ec4f5d61 div)
+    const parentContainer = attachButtonContainer.parentNode;
+
+    // Create export button
     const exportBtn = document.createElement('div');
     exportBtn.id = 'deepblue-export-pdf-btn';
     exportBtn.setAttribute('role', 'button');
     exportBtn.setAttribute('tabindex', '0');
     exportBtn.className = 'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
-    exportBtn.style.cssText = '--dsl-button-height: 34px; margin-right: 8px; cursor: pointer; flex-shrink: 0;';
+    exportBtn.style.cssText = '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
     exportBtn.title = `Export conversation as PDF (${BRAND_NAME})`;
-
     exportBtn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">
@@ -76,11 +108,102 @@
     </svg>
     </div>
     `;
-
     exportBtn.addEventListener('click', exportConversationAsPDF);
-    attachButtonContainer.parentNode.insertBefore(exportBtn, attachButtonContainer);
 
-    console.log(`${BRAND_NAME} Export PDF button added!`);
+    // Create character counter
+    const counter = document.createElement('div');
+    counter.id = 'deepblue-char-counter';
+    counter.style.cssText = `
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #8e8e93;
+    padding: 0 6px 0 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    user-select: none;
+    flex-shrink: 0;
+    height: 34px;
+    letter-spacing: 0.2px;
+    `;
+    counter.innerHTML = `<span id="deepblue-char-count">0</span><span>characters</span>`;
+    counter.title = 'Character count';
+
+    // Insert export button before attach button
+    if (exportBtn && !document.getElementById('deepblue-export-pdf-btn')) {
+      parentContainer.insertBefore(exportBtn, attachButtonContainer);
+    }
+
+    // Insert counter before attach button (after export button)
+    if (counter && !document.getElementById('deepblue-char-counter')) {
+      parentContainer.insertBefore(counter, attachButtonContainer);
+    }
+
+    // Set up character counter with multiple event listeners
+    const textarea = findTextarea();
+    if (textarea) {
+      // Initial update
+      updateCharCount(textarea);
+
+      // Listen for user input
+      textarea.addEventListener('input', function() {
+        updateCharCount(this);
+      });
+
+      textarea.addEventListener('change', function() {
+        updateCharCount(this);
+      });
+
+      // Listen for programmatic changes (like when send clears the textarea)
+      // Using MutationObserver to watch for value changes
+      const textareaObserver = new MutationObserver(function(mutations) {
+        for (const mutation of mutations) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+            updateCharCount(textarea);
+          }
+        }
+      });
+
+      textareaObserver.observe(textarea, {
+        attributes: true,
+        attributeFilter: ['value']
+      });
+
+      // Also listen for the send button click to update after sending
+      const sendButton = document.querySelector('.ds-button.ds-button--primary.ds-button--filled.ds-button--circle .ds-button__icon')?.closest('.ds-button');
+      if (sendButton) {
+        sendButton.addEventListener('click', function() {
+          // Small delay to let the textarea clear
+          setTimeout(() => {
+            updateCharCount(textarea);
+          }, 50);
+        });
+      }
+
+      // Also watch for any click on the parent container that might trigger a send
+      document.addEventListener('click', function(e) {
+        // Check if click is on or inside the send button area
+        const target = e.target;
+        if (target.closest && target.closest('.ds-button.ds-button--primary.ds-button--filled.ds-button--circle')) {
+          setTimeout(() => {
+            updateCharCount(textarea);
+          }, 50);
+        }
+      });
+    }
+
+    console.log(`${BRAND_NAME} Buttons added!`);
+    console.log('Order: DeepThink/Search -> Export button -> Counter -> Clip button');
+  }
+
+  // Legacy function for backward compatibility
+  function addExportButton() {
+    addButtons();
+  }
+
+  function addCharacterCounter() {
+    addButtons();
   }
 
   function setButtonLoading(isLoading) {
@@ -331,10 +454,10 @@
 
   function sanitizeFilename(name) {
     return (name || 'DeepSeek-Conversation')
-      .replace(/[\\/:*?"<>|]+/g, ' ')
-      .trim()
-      .replace(/\s+/g, '-')
-      .slice(0, 80) || 'DeepSeek-Conversation';
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 80) || 'DeepSeek-Conversation';
   }
 
   // Builds an off-screen DOM tree with the same visual styling the old print stylesheet used,
@@ -344,12 +467,12 @@
     const root = document.createElement('div');
     root.id = 'deepblue-pdf-render-stage';
     root.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: -100000px;
-      width: ${CONTENT_WIDTH_PX}px;
-      background: #ffffff;
-      z-index: -1;
+    position: fixed;
+    top: 0;
+    left: -100000px;
+    width: ${CONTENT_WIDTH_PX}px;
+    background: #ffffff;
+    z-index: -1;
     `;
 
     const style = document.createElement('style');
@@ -363,9 +486,9 @@
     const header = document.createElement('div');
     header.className = 'db-header';
     header.innerHTML = `
-      <div class="db-logo">◆ ${escapeHtml(BRAND_NAME)}</div>
-      <h1 class="db-title">${escapeHtml(conversationData.title)}</h1>
-      <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} · ${conversationData.messages.length} messages</div>
+    <div class="db-logo">◆ ${escapeHtml(BRAND_NAME)}</div>
+    <h1 class="db-title">${escapeHtml(conversationData.title)}</h1>
+    <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} · ${conversationData.messages.length} messages</div>
     `;
     root.appendChild(header);
     blocks.push(header);
@@ -376,8 +499,8 @@
       messageEl.className = `db-message db-${msg.role}`;
       const bodyHtml = msg.isHTML ? msg.content : escapeHtml(msg.content).replace(/\n/g, '<br>');
       messageEl.innerHTML = `
-        <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
-        <div class="db-content">${bodyHtml}</div>
+      <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
+      <div class="db-content">${bodyHtml}</div>
       `;
       root.appendChild(messageEl);
       blocks.push(messageEl);
@@ -396,78 +519,78 @@
   function getStageCSS() {
     return `
     #deepblue-pdf-render-stage, #deepblue-pdf-render-stage * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      color: #1d1d1f;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1d1d1f;
     }
 
     #deepblue-pdf-render-stage .db-header {
-      text-align: center;
-      padding: 20px 24px 16px;
-      border-bottom: 3px solid #3964fe;
-      margin-bottom: 16px;
+    text-align: center;
+    padding: 20px 24px 16px;
+    border-bottom: 3px solid #3964fe;
+    margin-bottom: 16px;
     }
     #deepblue-pdf-render-stage .db-logo {
-      font-size: 26px;
-      font-weight: 700;
-      color: #3964fe;
-      letter-spacing: -0.5px;
+    font-size: 26px;
+    font-weight: 700;
+    color: #3964fe;
+    letter-spacing: -0.5px;
     }
     #deepblue-pdf-render-stage .db-title {
-      font-size: 17px;
-      font-weight: 500;
-      margin: 6px 0 3px;
+    font-size: 17px;
+    font-weight: 500;
+    margin: 6px 0 3px;
     }
     #deepblue-pdf-render-stage .db-subtitle {
-      font-size: 12px;
-      color: #8e8e93;
+    font-size: 12px;
+    color: #8e8e93;
     }
 
     #deepblue-pdf-render-stage .db-message {
-      margin: 0 4px 14px;
-      padding: 14px 20px;
-      border-radius: 10px;
-      border: 1px solid #e9ecf0;
+    margin: 0 4px 14px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    border: 1px solid #e9ecf0;
     }
     #deepblue-pdf-render-stage .db-message.db-user {
-      background: #f0f7ff;
-      border-color: #d0e0ff;
-      border-left: 4px solid #3964fe;
+    background: #f0f7ff;
+    border-color: #d0e0ff;
+    border-left: 4px solid #3964fe;
     }
     #deepblue-pdf-render-stage .db-message.db-assistant {
-      background: #f8f9fb;
-      border-color: #e9ecf0;
-      border-right: 4px solid #6c5ce7;
+    background: #f8f9fb;
+    border-color: #e9ecf0;
+    border-right: 4px solid #6c5ce7;
     }
     #deepblue-pdf-render-stage .db-role-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #8e8e93;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
     }
     #deepblue-pdf-render-stage .db-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
-      background: currentColor;
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: currentColor;
     }
     #deepblue-pdf-render-stage .db-user .db-dot { background: #3964fe; }
     #deepblue-pdf-render-stage .db-assistant .db-dot { background: #6c5ce7; }
 
     #deepblue-pdf-render-stage .db-content {
-      font-size: 14px;
-      line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.6;
     }
     #deepblue-pdf-render-stage .db-content p { margin: 0 0 8px; }
     #deepblue-pdf-render-stage .db-content p:last-child { margin-bottom: 0; }
     #deepblue-pdf-render-stage .db-content ul,
     #deepblue-pdf-render-stage .db-content ol {
-      padding-left: 22px;
-      margin: 6px 0;
+    padding-left: 22px;
+    margin: 6px 0;
     }
     #deepblue-pdf-render-stage .db-content li { margin-bottom: 4px; }
     #deepblue-pdf-render-stage .db-content strong { font-weight: 600; }
@@ -475,64 +598,64 @@
     #deepblue-pdf-render-stage .db-content h1,
     #deepblue-pdf-render-stage .db-content h2,
     #deepblue-pdf-render-stage .db-content h3 {
-      margin: 10px 0 6px;
-      font-weight: 600;
+    margin: 10px 0 6px;
+    font-weight: 600;
     }
     #deepblue-pdf-render-stage .db-content h1 { font-size: 19px; }
     #deepblue-pdf-render-stage .db-content h2 { font-size: 17px; }
     #deepblue-pdf-render-stage .db-content h3 { font-size: 15px; }
 
     #deepblue-pdf-render-stage .code-block {
-      background: #1e1e2e;
-      border-radius: 8px;
-      margin: 10px 0;
-      overflow: hidden;
+    background: #1e1e2e;
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow: hidden;
     }
     #deepblue-pdf-render-stage .code-header {
-      background: #2d2d44;
-      color: #cdd6f4;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 4px 14px;
-      font-family: 'Menlo', 'Consolas', monospace;
-      border-bottom: 1px solid #3d3d55;
+    background: #2d2d44;
+    color: #cdd6f4;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 14px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    border-bottom: 1px solid #3d3d55;
     }
     #deepblue-pdf-render-stage .code-block pre {
-      margin: 0;
-      padding: 12px 16px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      background: #1e1e2e;
+    margin: 0;
+    padding: 12px 16px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #1e1e2e;
     }
     #deepblue-pdf-render-stage .code-block code {
-      font-family: 'Menlo', 'Consolas', monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #cdd6f4;
-      white-space: pre-wrap;
-      word-wrap: break-word;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #cdd6f4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
     }
     #deepblue-pdf-render-stage .inline-code {
-      background: #f0f0f5;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-family: 'Menlo', 'Consolas', monospace;
-      font-size: 13px;
-      color: #d63384;
-      border: 1px solid #e5e5ea;
+    background: #f0f0f5;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    color: #d63384;
+    border: 1px solid #e5e5ea;
     }
 
     #deepblue-pdf-render-stage .db-footer {
-      text-align: center;
-      padding: 14px 0 6px;
-      margin-top: 6px;
-      border-top: 2px solid #e9ecf0;
-      font-size: 11px;
-      color: #8e8e93;
+    text-align: center;
+    padding: 14px 0 6px;
+    margin-top: 6px;
+    border-top: 2px solid #e9ecf0;
+    font-size: 11px;
+    color: #8e8e93;
     }
     #deepblue-pdf-render-stage .db-brand {
-      color: #3964fe;
-      font-weight: 500;
+    color: #3964fe;
+    font-weight: 500;
     }
     `;
   }
