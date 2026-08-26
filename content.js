@@ -100,10 +100,10 @@
   function sanitizeFilename(name) {
     return (
       (name || 'DeepSeek-Conversation')
-        .replace(/[\\/:*?"<>|]+/g, ' ')
-        .trim()
-        .replace(/\s+/g, '-')
-        .slice(0, 80) || 'DeepSeek-Conversation'
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 80) || 'DeepSeek-Conversation'
     );
   }
 
@@ -121,8 +121,8 @@
       const fileInput = document.querySelector(CONFIG.selectors.fileInput);
       const scope = fileInput?.closest('.bf38813a') || fileInput?.parentElement || document;
       const wrapper =
-        scope.querySelector(CONFIG.selectors.fitContentWrapper) ||
-        scope.querySelector(CONFIG.selectors.primaryCircleButton)?.closest(CONFIG.selectors.fitContentWrapper);
+      scope.querySelector(CONFIG.selectors.fitContentWrapper) ||
+      scope.querySelector(CONFIG.selectors.primaryCircleButton)?.closest(CONFIG.selectors.fitContentWrapper);
       return wrapper || scope.querySelector?.(CONFIG.selectors.primaryCircleButton)?.parentElement || null;
     },
 
@@ -191,18 +191,18 @@
       btn.setAttribute('tabindex', '0');
       btn.setAttribute('aria-label', `Export conversation as PDF (${BRAND_NAME})`);
       btn.className =
-        'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
+      'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
       btn.style.cssText = '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
       btn.title = `Export conversation as PDF (${BRAND_NAME})`;
       btn.innerHTML = `
-        <div class="ds-button__background"></div>
-        <div class="ds-button__icon ds-button__icon--last-child">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
-        </div>`;
+      <div class="ds-button__background"></div>
+      <div class="ds-button__icon ds-button__icon--last-child">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      </div>`;
       btn.addEventListener('click', PdfExport.run);
       btn.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -217,19 +217,19 @@
       const counter = document.createElement('div');
       counter.id = CONFIG.ids.counter;
       counter.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 12px;
-        font-weight: 700;
-        color: ${CONFIG.charCounter.colors.normal};
-        padding: 0 6px 0 4px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        user-select: none;
-        flex-shrink: 0;
-        height: 34px;
-        letter-spacing: 0.2px;
-        margin-right: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: ${CONFIG.charCounter.colors.normal};
+      padding: 0 6px 0 4px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+      flex-shrink: 0;
+      height: 34px;
+      letter-spacing: 0.2px;
+      margin-right: 4px;
       `;
       counter.innerHTML = `<span id="${CONFIG.ids.countSpan}">0</span><span>characters</span>`;
       counter.title = 'Character count';
@@ -260,6 +260,15 @@
       textarea.addEventListener('paste', () => setTimeout(() => CharCounter.update(textarea), 0));
       textarea.addEventListener('cut', () => setTimeout(() => CharCounter.update(textarea), 0));
 
+      // Most people send with Enter rather than clicking the send button, so
+      // that has to start the generation clock too (Shift+Enter is a newline,
+      // not a send).
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+          GenerationTimer.noteRequestStart();
+        }
+      });
+
       // React/virtual-DOM apps often clear the textarea programmatically after
       // send, without firing an `input` event. Re-check a few times shortly
       // after any click on a primary circular button that ISN'T our own export
@@ -267,6 +276,7 @@
       document.addEventListener('click', (e) => {
         const target = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
         if (!target || target.id === CONFIG.ids.exportBtn) return;
+        GenerationTimer.noteRequestStart();
         for (const delay of CONFIG.timing.postClickRecheckDelaysMs) {
           setTimeout(() => CharCounter.update(DOM.findTextarea()), delay);
         }
@@ -295,106 +305,154 @@
   };
 
   // ---------------------------------------------------------------------
+  // Generation timer - wall-clock time between hitting "send" and the
+  // response finishing. We don't have access to the actual API request, so
+  // this is a DOM-level approximation: the timestamp is captured on send-
+  // button click, and consumed exactly once, at the moment TokenCounter
+  // decides a given assistant message is complete (see _processMessage).
+  // ---------------------------------------------------------------------
+
+  const GenerationTimer = {
+    _pendingStartTime: null,
+
+    noteRequestStart() {
+      this._pendingStartTime = Date.now();
+    },
+
+    /** Reads and clears the pending start time, returning elapsed seconds (or null if unknown). */
+    consumeElapsedSeconds() {
+      if (this._pendingStartTime == null) return null;
+      const elapsedMs = Date.now() - this._pendingStartTime;
+      this._pendingStartTime = null;
+      return elapsedMs / 1000;
+    },
+
+    /** e.g. 3.2 -> "3.2s", 47 -> "47s", 92 -> "1m 32s" */
+    format(seconds) {
+      if (seconds == null || !isFinite(seconds) || seconds < 0) return null;
+      if (seconds < 60) return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return `${mins}m ${secs}s`;
+    },
+  };
+
+  // ---------------------------------------------------------------------
   // Per-message estimated token counter
   // ---------------------------------------------------------------------
 
   const TokenCounter = {
     _processed: new WeakSet(),
 
-    /**
-     * Rough token estimate that's aware of CJK text, since "chars / 4" is a
-     * reasonable approximation for English/Latin text but badly undercounts
-     * for Chinese/Japanese/Korean, where each character is closer to its own
-     * token. We split the text into CJK vs. non-CJK spans and estimate each
-     * separately, which keeps the common case cheap and fixes the worst
-     * failure mode of the naive approach.
-     */
-    estimate(text) {
-      if (!text) return 0;
-      const clean = text.replace(/\s+/g, ' ').trim();
-      if (!clean.length) return 0;
+ /**
+  * Rough token estimate that's aware of CJK text, since "chars / 4" is a
+  * reasonable approximation for English/Latin text but badly undercounts
+  * for Chinese/Japanese/Korean, where each character is closer to its own
+  * token. We split the text into CJK vs. non-CJK spans and estimate each
+  * separately, which keeps the common case cheap and fixes the worst
+  * failure mode of the naive approach.
+  */
+ estimate(text) {
+   if (!text) return 0;
+   const clean = text.replace(/\s+/g, ' ').trim();
+   if (!clean.length) return 0;
 
-      const cjkMatches = clean.match(/[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/g);
-      const cjkCount = cjkMatches ? cjkMatches.length : 0;
-      const otherCount = clean.length - cjkCount;
+   const cjkMatches = clean.match(/[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/g);
+   const cjkCount = cjkMatches ? cjkMatches.length : 0;
+   const otherCount = clean.length - cjkCount;
 
-      const tokens =
-        cjkCount / CONFIG.tokenCounter.cjkCharsPerToken + otherCount / CONFIG.tokenCounter.latinCharsPerToken;
+   const tokens =
+   cjkCount / CONFIG.tokenCounter.cjkCharsPerToken + otherCount / CONFIG.tokenCounter.latinCharsPerToken;
 
-      return Math.max(1, Math.round(tokens));
-    },
+   return Math.max(1, Math.round(tokens));
+ },
 
-    scan() {
-      try {
-        const messages = DOM.findMessages();
-        messages.forEach((message) => this._processMessage(message));
-      } catch (err) {
-        console.debug(`${BRAND_NAME}: token counter error`, err);
-      }
-    },
+ scan() {
+   try {
+     const messages = DOM.findMessages();
+     messages.forEach((message) => this._processMessage(message));
+   } catch (err) {
+     console.debug(`${BRAND_NAME}: token counter error`, err);
+   }
+ },
 
-    _isAssistantMessage(message) {
-      const looksLikeUser =
-        message.classList.contains('d29f3d7d') || message.querySelector(CONFIG.selectors.userMessageMarker) !== null;
-      return !looksLikeUser;
-    },
+ _isAssistantMessage(message) {
+   const looksLikeUser =
+   message.classList.contains('d29f3d7d') || message.querySelector(CONFIG.selectors.userMessageMarker) !== null;
+   return !looksLikeUser;
+ },
 
-    _processMessage(message) {
-      if (this._processed.has(message)) return;
-      if (message.querySelector('.deepblue-token-counter')) {
-        this._processed.add(message);
-        return;
-      }
-      if (!this._isAssistantMessage(message)) return;
+ _processMessage(message) {
+   if (this._processed.has(message)) return;
+   if (message.querySelector('.deepblue-token-counter')) {
+     this._processed.add(message);
+     return;
+   }
+   if (!this._isAssistantMessage(message)) return;
 
-      const markdown = message.querySelector(CONFIG.selectors.markdown);
-      if (!markdown) return;
+   const markdown = message.querySelector(CONFIG.selectors.markdown);
+   if (!markdown) return;
 
-      const tokenCount = this.estimate(markdown.textContent);
+   const actionRow = queryFirst(CONFIG.selectors.messageActionRow, message.parentElement || document);
+   const buttonRow = actionRow ? queryFirst(CONFIG.selectors.messageButtonRow, actionRow) : null;
+   // The button row (copy/regenerate/etc.) only renders once the response has
+   // finished streaming, so its appearance doubles as our "generation done"
+   // signal - this is the point where we consume the pending start time.
+   if (!buttonRow) return;
 
-      const actionRow = queryFirst(CONFIG.selectors.messageActionRow, message.parentElement || document);
-      const buttonRow = actionRow ? queryFirst(CONFIG.selectors.messageButtonRow, actionRow) : null;
-      if (!buttonRow) return;
+   const tokenCount = this.estimate(markdown.textContent);
+   const elapsedSeconds = GenerationTimer.consumeElapsedSeconds();
 
-      buttonRow.insertBefore(this._buildBadge(tokenCount), this._findInsertAnchor(buttonRow));
-      this._processed.add(message);
-    },
+   buttonRow.insertBefore(this._buildBadge(tokenCount, elapsedSeconds), this._findInsertAnchor(buttonRow));
+   this._processed.add(message);
+ },
 
-    _findInsertAnchor(buttonRow) {
-      return buttonRow.querySelector(CONFIG.selectors.shareButton) || buttonRow.lastElementChild || null;
-    },
+ _findInsertAnchor(buttonRow) {
+   return buttonRow.querySelector(CONFIG.selectors.shareButton) || buttonRow.lastElementChild || null;
+ },
 
-    _buildBadge(tokenCount) {
-      const badge = document.createElement('div');
-      badge.className = 'deepblue-token-counter';
-      badge.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 11px;
-        font-weight: 500;
-        color: #8e8e93;
-        padding: 0 6px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        user-select: none;
-        height: 28px;
-        letter-spacing: 0.2px;
-        opacity: 0.7;
-        border-left: 1px solid #e9ecf0;
-        margin-left: 4px;
-        padding-left: 10px;
-      `;
-      badge.title = `Estimated tokens: ${tokenCount}`;
-      badge.innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
-          <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
-          <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
-        </svg>
-        <span>${tokenCount}</span>
-        <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
-      `;
-      return badge;
-    },
+ _buildBadge(tokenCount, elapsedSeconds) {
+   const badge = document.createElement('div');
+   badge.className = 'deepblue-token-counter';
+   badge.style.cssText = `
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   font-size: 11px;
+   font-weight: 500;
+   color: #8e8e93;
+   padding: 0 6px;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   user-select: none;
+   height: 28px;
+   letter-spacing: 0.2px;
+   opacity: 0.7;
+   border-left: 1px solid #e9ecf0;
+   margin-left: 4px;
+   padding-left: 10px;
+   `;
+
+   const timeLabel = GenerationTimer.format(elapsedSeconds);
+   badge.title = timeLabel
+   ? `Estimated tokens: ${tokenCount} \u00b7 Generated in ${timeLabel}`
+   : `Estimated tokens: ${tokenCount}`;
+
+   badge.innerHTML = `
+   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
+   <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
+   <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
+   </svg>
+   <span>${tokenCount}</span>
+   <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
+   ${
+     timeLabel
+     ? `<span style="opacity: 0.4;">&middot;</span>
+     <span>${escapeHtml(timeLabel)}</span>`
+     : ''
+   }
+   `;
+   return badge;
+ },
   };
 
   // ---------------------------------------------------------------------
@@ -518,7 +576,7 @@
       const messages = [];
       containers.forEach((container) => {
         const isUser =
-          container.classList.contains('d29f3d7d') || container.querySelector(CONFIG.selectors.userMessageMarker) !== null;
+        container.classList.contains('d29f3d7d') || container.querySelector(CONFIG.selectors.userMessageMarker) !== null;
 
         let content = '';
         if (isUser) {
@@ -610,7 +668,7 @@
 
         case 'div':
           if (node.className?.includes('ds-markdown')) return this._renderNodeChildren(node);
-        // fall through intentionally for generic divs
+          // fall through intentionally for generic divs
         default:
           if (node.children?.length) {
             let out = '';
@@ -631,12 +689,12 @@
       const root = document.createElement('div');
       root.id = CONFIG.ids.renderStage;
       root.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: -100000px;
-        width: ${CONFIG.pdf.contentWidthPx}px;
-        background: #ffffff;
-        z-index: -1;
+      position: fixed;
+      top: 0;
+      left: -100000px;
+      width: ${CONFIG.pdf.contentWidthPx}px;
+      background: #ffffff;
+      z-index: -1;
       `;
 
       const style = document.createElement('style');
@@ -649,9 +707,9 @@
       const header = document.createElement('div');
       header.className = 'db-header';
       header.innerHTML = `
-        <div class="db-logo">${escapeHtml(BRAND_NAME)}</div>
-        <h1 class="db-title">${escapeHtml(conversation.title)}</h1>
-        <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${conversation.messages.length} messages</div>
+      <div class="db-logo">${escapeHtml(BRAND_NAME)}</div>
+      <h1 class="db-title">${escapeHtml(conversation.title)}</h1>
+      <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${conversation.messages.length} messages</div>
       `;
       root.appendChild(header);
       blocks.push(header);
@@ -661,8 +719,8 @@
         el.className = `db-message db-${msg.role}`;
         const body = msg.isHTML ? msg.content : `<p>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</p>`;
         el.innerHTML = `
-          <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
-          <div class="db-content">${body}</div>
+        <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
+        <div class="db-content">${body}</div>
         `;
         root.appendChild(el);
         blocks.push(el);
@@ -679,49 +737,49 @@
 
     _css() {
       return `
-        #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
-          box-sizing: border-box;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          color: #1d1d1f;
-        }
-        #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
-        #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
-        #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
-        #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
+      #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1d1d1f;
+      }
+      #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
+      #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
+      #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
+      #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
 
-        #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
-        #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
-        #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
-        #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
-        #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
-        #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
+      #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
+      #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+      #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+      #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
+      #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
 
-        #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
-        #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
-        #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
-        #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
-        #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
-        #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
-        #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
-        #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
-        #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
-        #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
-        #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
-        #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
-        #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
-        #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-        #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
-        #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
+      #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
+      #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
+      #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
+      #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
+      #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
+      #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
+      #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
+      #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
+      #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
+      #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+      #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
+      #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
 
-        #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
-        #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
-        #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
-        #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
-        #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
+      #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
+      #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
+      #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
+      #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
 
-        #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
-        #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
+      #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
+      #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
       `;
     },
   };
