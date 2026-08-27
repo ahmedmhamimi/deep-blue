@@ -34,6 +34,9 @@
       searchNext: 'deepblue-search-next',
       searchCount: 'deepblue-search-count',
       searchClear: 'deepblue-search-clear',
+      sidebarSearchBar: 'deepblue-sidebar-search',
+      sidebarSearchInput: 'deepblue-sidebar-search-input',
+      sidebarSearchClear: 'deepblue-sidebar-search-clear',
     },
     selectors: {
       fileInput: 'input[type="file"][multiple], input[type="file"]',
@@ -55,6 +58,13 @@
       headerContainer: 'header, .ds-header, [class*="header"]',
       virtualListItems: '.ds-virtual-list-items._6f2c522',
       visibleItems: '.ds-virtual-list-visible-items',
+      sidebarNewChatRow: '._7b40dad',
+      sidebarScrollArea: '._6d215eb.ds-scroll-area',
+      sidebarListGroups: '._77cdc67._8a693f3',
+      sidebarDateGroup: '._3098d02',
+      sidebarDateLabel: '.f3d18f6a',
+      sidebarConversationLink: 'a._546d736',
+      sidebarConversationTitle: '.c08e6e93',
     },
     charCounter: {
       warnAt: 500,
@@ -221,6 +231,18 @@
      if (msg) messages.push(msg);
    });
      return messages.length ? messages : this.findMessages();
+ },
+
+ findSidebarNewChatRow() {
+   return document.querySelector(CONFIG.selectors.sidebarNewChatRow);
+ },
+
+ findSidebarListGroups() {
+   return document.querySelector(CONFIG.selectors.sidebarListGroups);
+ },
+
+ getSidebarConversationLinks() {
+   return Array.from(document.querySelectorAll(CONFIG.selectors.sidebarConversationLink));
  }
   };
 
@@ -1163,6 +1185,153 @@
   };
 
   // ---------------------------------------------------------------------
+  // Sidebar search: filters the conversation list by title
+  // ---------------------------------------------------------------------
+
+  const SidebarSearch = {
+    ensureInjected() {
+      if (document.getElementById(CONFIG.ids.sidebarSearchBar)) return;
+
+      const newChatRow = DOM.findSidebarNewChatRow();
+      if (!newChatRow || !newChatRow.parentElement) return;
+
+      newChatRow.insertAdjacentElement('afterend', this._build());
+    },
+
+ _build() {
+   const container = document.createElement('div');
+   container.id = CONFIG.ids.sidebarSearchBar;
+   container.style.cssText = `
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   margin: 8px 12px;
+   padding: 4px 10px;
+   background: #f0f2f5;
+   border-radius: 20px;
+   border: 1.5px solid transparent;
+   transition: all 0.25s ease;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   flex-shrink: 0;
+   `;
+
+   container.addEventListener('focusin', () => {
+     container.style.background = '#ffffff';
+     container.style.borderColor = '#3964fe';
+     container.style.boxShadow = '0 0 0 3px rgba(57, 100, 254, 0.15)';
+   });
+
+   container.addEventListener('focusout', () => {
+     container.style.background = '#f0f2f5';
+     container.style.borderColor = 'transparent';
+     container.style.boxShadow = 'none';
+   });
+
+   container.innerHTML = `
+   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; opacity: 0.5;">
+   <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+   <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+   </svg>
+   <input id="${CONFIG.ids.sidebarSearchInput}" type="text" placeholder="Search conversations..." style="
+   border: none;
+   background: transparent;
+   outline: none;
+   font-size: 13px;
+   padding: 6px 0;
+   width: 100%;
+   color: #1d1d1f;
+   font-family: inherit;
+   ">
+   <button id="${CONFIG.ids.sidebarSearchClear}" style="
+   background: none;
+   border: none;
+   cursor: pointer;
+   padding: 4px 4px;
+   color: #8e8e93;
+   border-radius: 6px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   opacity: 0;
+   pointer-events: none;
+   flex-shrink: 0;
+   " title="Clear search">
+   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+   </svg>
+   </button>
+   `;
+
+   const input = container.querySelector(`#${CONFIG.ids.sidebarSearchInput}`);
+   const clearBtn = container.querySelector(`#${CONFIG.ids.sidebarSearchClear}`);
+
+   if (clearBtn) {
+     clearBtn.addEventListener('mouseenter', () => {
+       clearBtn.style.background = '#fee2e2';
+       clearBtn.style.color = '#dc2626';
+     });
+     clearBtn.addEventListener('mouseleave', () => {
+       clearBtn.style.background = 'none';
+       clearBtn.style.color = '#8e8e93';
+     });
+     clearBtn.addEventListener('click', () => this.clear());
+   }
+
+   if (input) {
+     input.addEventListener('input', () => this._applyFilter(input.value));
+     input.addEventListener('keydown', (e) => {
+       if (e.key === 'Escape') this.clear();
+     });
+   }
+
+   return container;
+ },
+
+ _applyFilter(query) {
+   const term = (query || '').trim().toLowerCase();
+   const clearBtn = document.getElementById(CONFIG.ids.sidebarSearchClear);
+   if (clearBtn) {
+     clearBtn.style.opacity = term ? '0.6' : '0';
+     clearBtn.style.pointerEvents = term ? 'auto' : 'none';
+   }
+
+   const links = DOM.getSidebarConversationLinks();
+
+   links.forEach((link) => {
+     const titleEl = link.querySelector(CONFIG.selectors.sidebarConversationTitle);
+     const title = (titleEl?.textContent || link.textContent || '').toLowerCase();
+     const matches = !term || title.includes(term);
+     link.style.display = matches ? '' : 'none';
+   });
+
+   // Hide a date-group header (e.g. "Today") if every link under it is hidden
+   document.querySelectorAll(CONFIG.selectors.sidebarDateGroup).forEach((group) => {
+     const groupLinks = Array.from(group.querySelectorAll(CONFIG.selectors.sidebarConversationLink));
+     if (!groupLinks.length) return;
+     const anyVisible = groupLinks.some((l) => l.style.display !== 'none');
+     const label = group.querySelector(CONFIG.selectors.sidebarDateLabel);
+     if (label) label.style.display = anyVisible ? '' : 'none';
+   });
+ },
+
+ clear() {
+   const input = document.getElementById(CONFIG.ids.sidebarSearchInput);
+   if (input) {
+     input.value = '';
+     this._applyFilter('');
+     input.focus();
+   }
+ },
+
+ _reapplyIfActive() {
+   const input = document.getElementById(CONFIG.ids.sidebarSearchInput);
+   if (input && input.value.trim()) {
+     this._applyFilter(input.value);
+   }
+ }
+  };
+
+  // ---------------------------------------------------------------------
   // PDF export
   // ---------------------------------------------------------------------
 
@@ -1501,6 +1670,7 @@
         node?.closest?.(`#${CONFIG.ids.renderStage}`) ||
         node?.closest?.(`#${CONFIG.ids.contextMeter}`) ||
         node?.closest?.(`#${CONFIG.ids.searchBar}`) ||
+        node?.closest?.(`#${CONFIG.ids.sidebarSearchBar}`) ||
         node?.classList?.contains?.('deepblue-token-counter') ||
         node?.classList?.contains?.('deepblue-search-highlight')
       );
@@ -1513,6 +1683,8 @@
     ContextMeter.scan();
     ChatSearch.ensureInjected();
     ChatSearch._injectStyles();
+    SidebarSearch.ensureInjected();
+    SidebarSearch._reapplyIfActive();
   }
 
   const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);
