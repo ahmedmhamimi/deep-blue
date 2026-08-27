@@ -63,16 +63,25 @@
       // lower ratio rather than being lumped in with latinCharsPerToken.
       codeCharsPerToken: 3.0,
       storageKey: 'deepblue-context-model-id',
-      defaultModelId: 'v3.2',
-      // Context-window sizes as published by DeepSeek. The web app doesn't
-      // expose which model is actually serving a given chat, so this is a
-      // user-selectable assumption (click the meter to cycle), not a
-      // detected fact.
-      models: [
-        { id: 'v3.2', label: 'DeepSeek-V3.2 (128K)', limit: 131072 },
-        { id: 'v4', label: 'DeepSeek-V4 (1M)', limit: 1048576 },
-        { id: 'r1', label: 'DeepSeek-R1 (64K)', limit: 65536 },
-      ],
+      // Bump this whenever defaultModelId/models change in a way that should
+      // override a previously-cycled-to choice sitting in localStorage (e.g.
+      // someone landed on a stale preset while testing). A version mismatch
+      // is treated as "no real choice made yet" and resets to the new default;
+      // a deliberate click after that point sticks until the next bump.
+      presetVersion: 2,
+      defaultModelId: 'v4',
+        // Context-window sizes as published by DeepSeek. The web app doesn't
+        // expose which model is actually serving a given chat, so this is a
+        // user-selectable assumption (click the meter to cycle), not a
+        // detected fact. As of the V4 launch, chat.deepseek.com's Instant
+        // (V4-Flash), Expert (V4-Pro), and Vision modes all share the same
+        // 1M-token context window, so "v4" alone covers all three - V3.2/R1
+        // are kept only as fallbacks for accounts still on the older tier.
+        models: [
+          { id: 'v4', label: 'DeepSeek-V4 \u00b7 Instant/Expert/Vision (1M)', limit: 1048576 },
+ { id: 'v3.2', label: 'DeepSeek-V3.2 legacy (128K)', limit: 131072 },
+ { id: 'r1', label: 'DeepSeek-R1 legacy (64K)', limit: 65536 },
+        ],
     },
     timing: {
       initialScanDelayMs: 1200,
@@ -124,10 +133,10 @@
   function sanitizeFilename(name) {
     return (
       (name || 'DeepSeek-Conversation')
-        .replace(/[\\/:*?"<>|]+/g, ' ')
-        .trim()
-        .replace(/\s+/g, '-')
-        .slice(0, 80) || 'DeepSeek-Conversation'
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 80) || 'DeepSeek-Conversation'
     );
   }
 
@@ -145,48 +154,48 @@
       const fileInput = document.querySelector(CONFIG.selectors.fileInput);
       const scope = fileInput?.closest('.bf38813a') || fileInput?.parentElement || document;
       const wrapper =
-        scope.querySelector(CONFIG.selectors.fitContentWrapper) ||
-        scope.querySelector(CONFIG.selectors.primaryCircleButton)?.closest(CONFIG.selectors.fitContentWrapper);
+      scope.querySelector(CONFIG.selectors.fitContentWrapper) ||
+      scope.querySelector(CONFIG.selectors.primaryCircleButton)?.closest(CONFIG.selectors.fitContentWrapper);
       return wrapper || scope.querySelector?.(CONFIG.selectors.primaryCircleButton)?.parentElement || null;
     },
 
-    findTextarea() {
-      return queryFirst(CONFIG.selectors.textarea);
-    },
+ findTextarea() {
+   return queryFirst(CONFIG.selectors.textarea);
+ },
 
-    findMessages() {
-      const primary = document.querySelectorAll(CONFIG.selectors.messages[0]);
-      if (primary.length) return primary;
-      return document.querySelectorAll(CONFIG.selectors.messages[1]);
-    },
+ findMessages() {
+   const primary = document.querySelectorAll(CONFIG.selectors.messages[0]);
+   if (primary.length) return primary;
+   return document.querySelectorAll(CONFIG.selectors.messages[1]);
+ },
 
-    findConversationTitle() {
-      const el = queryFirst(CONFIG.selectors.title);
-      return el?.textContent?.trim() || 'DeepSeek Conversation';
-    },
+ findConversationTitle() {
+   const el = queryFirst(CONFIG.selectors.title);
+   return el?.textContent?.trim() || 'DeepSeek Conversation';
+ },
 
-    /**
-     * The row holding the "DeepThink" / "Search" mode toggle buttons under the
-     * composer. There's no stable class for it, so we find it by walking up
-     * from whichever leaf element's visible text is exactly "Search".
-     */
-    findComposerModeRow() {
-      const textarea = this.findTextarea();
-      const scope = textarea?.closest('form') || textarea?.parentElement?.parentElement?.parentElement || document;
-      const candidates = scope.querySelectorAll('div, button, span');
-      for (const el of candidates) {
-        if (el.children.length > 0) continue; // want a leaf label node
-        if (el.textContent?.trim().toLowerCase() !== 'search') continue;
-        // Walk up a couple of levels to the row that also contains DeepThink.
-        let row = el.parentElement;
-        for (let i = 0; i < 3 && row; i++) {
-          if (row.textContent?.toLowerCase().includes('deepthink')) return row;
-          row = row.parentElement;
-        }
-        return el.parentElement; // fall back to immediate parent
-      }
-      return null;
-    },
+ /**
+  * The row holding the "DeepThink" / "Search" mode toggle buttons under the
+  * composer. There's no stable class for it, so we find it by walking up
+  * from whichever leaf element's visible text is exactly "Search".
+  */
+ findComposerModeRow() {
+   const textarea = this.findTextarea();
+   const scope = textarea?.closest('form') || textarea?.parentElement?.parentElement?.parentElement || document;
+   const candidates = scope.querySelectorAll('div, button, span');
+   for (const el of candidates) {
+     if (el.children.length > 0) continue; // want a leaf label node
+     if (el.textContent?.trim().toLowerCase() !== 'search') continue;
+     // Walk up a couple of levels to the row that also contains DeepThink.
+     let row = el.parentElement;
+     for (let i = 0; i < 3 && row; i++) {
+       if (row.textContent?.toLowerCase().includes('deepthink')) return row;
+       row = row.parentElement;
+     }
+     return el.parentElement; // fall back to immediate parent
+   }
+   return null;
+ },
   };
 
   // ---------------------------------------------------------------------
@@ -238,18 +247,18 @@
       btn.setAttribute('tabindex', '0');
       btn.setAttribute('aria-label', `Export conversation as PDF (${BRAND_NAME})`);
       btn.className =
-        'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
+      'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
       btn.style.cssText = '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
       btn.title = `Export conversation as PDF (${BRAND_NAME})`;
       btn.innerHTML = `
-        <div class="ds-button__background"></div>
-        <div class="ds-button__icon ds-button__icon--last-child">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
-        </div>`;
+      <div class="ds-button__background"></div>
+      <div class="ds-button__icon ds-button__icon--last-child">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 20H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      </div>`;
       btn.addEventListener('click', PdfExport.run);
       btn.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -264,19 +273,19 @@
       const counter = document.createElement('div');
       counter.id = CONFIG.ids.counter;
       counter.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 12px;
-        font-weight: 700;
-        color: ${CONFIG.charCounter.colors.normal};
-        padding: 0 6px 0 4px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        user-select: none;
-        flex-shrink: 0;
-        height: 34px;
-        letter-spacing: 0.2px;
-        margin-right: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: ${CONFIG.charCounter.colors.normal};
+      padding: 0 6px 0 4px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+      flex-shrink: 0;
+      height: 34px;
+      letter-spacing: 0.2px;
+      margin-right: 4px;
       `;
       counter.innerHTML = `<span id="${CONFIG.ids.countSpan}">0</span><span>characters</span>`;
       counter.title = 'Character count';
@@ -477,16 +486,37 @@
 
   const ContextMeter = {
     _selectedModelId: null,
+    _versionKey: `${CONFIG.contextWindow.storageKey}-preset-version`,
 
     init() {
       let stored = null;
+      let storedVersion = null;
       try {
         stored = localStorage.getItem(CONFIG.contextWindow.storageKey);
+        storedVersion = localStorage.getItem(this._versionKey);
       } catch (err) {
         // localStorage can throw in some embedded/privacy contexts - just fall back.
       }
-      const known = CONFIG.contextWindow.models.some((m) => m.id === stored);
+
+      const versionMatches = storedVersion === String(CONFIG.contextWindow.presetVersion);
+      const known = versionMatches && CONFIG.contextWindow.models.some((m) => m.id === stored);
       this._selectedModelId = known ? stored : CONFIG.contextWindow.defaultModelId;
+
+      if (!known) {
+        // Either nothing was stored yet, or it predates a preset-version bump
+        // (defaults changed) - persist the new default so we don't
+        // re-evaluate this every scan.
+        this._persist(this._selectedModelId);
+      }
+    },
+
+    _persist(modelId) {
+      try {
+        localStorage.setItem(CONFIG.contextWindow.storageKey, modelId);
+        localStorage.setItem(this._versionKey, String(CONFIG.contextWindow.presetVersion));
+      } catch (err) {
+        // Ignore - worst case the choice doesn't persist across reloads.
+      }
     },
 
     _currentModel() {
@@ -500,11 +530,7 @@
       const idx = models.findIndex((m) => m.id === this._selectedModelId);
       const next = models[(idx + 1) % models.length];
       this._selectedModelId = next.id;
-      try {
-        localStorage.setItem(CONFIG.contextWindow.storageKey, next.id);
-      } catch (err) {
-        // Ignore - worst case the choice doesn't persist across reloads.
-      }
+      this._persist(next.id);
       this.scan();
     },
 
@@ -522,26 +548,26 @@
       wrap.setAttribute('tabindex', '0');
       wrap.setAttribute('aria-label', 'Estimated context window usage - click to change assumed model');
       wrap.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 500;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        color: #8e8e93;
-        cursor: pointer;
-        user-select: none;
-        margin-left: 8px;
-        padding: 4px 9px;
-        border-radius: 999px;
-        border: 1px solid #e9ecf0;
-        vertical-align: middle;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #8e8e93;
+      cursor: pointer;
+      user-select: none;
+      margin-left: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid #e9ecf0;
+      vertical-align: middle;
       `;
       wrap.innerHTML = `
-        <div style="width: 54px; height: 5px; border-radius: 3px; background: #e9ecf0; overflow: hidden; flex-shrink: 0;">
-          <div class="deepblue-context-fill" style="height: 100%; width: 0%; background: #3964fe; transition: width 200ms ease, background-color 200ms ease;"></div>
-        </div>
-        <span class="deepblue-context-label">0%</span>
+      <div style="width: 54px; height: 5px; border-radius: 3px; background: #e9ecf0; overflow: hidden; flex-shrink: 0;">
+      <div class="deepblue-context-fill" style="height: 100%; width: 0%; background: #3964fe; transition: width 200ms ease, background-color 200ms ease;"></div>
+      </div>
+      <span class="deepblue-context-label">0%</span>
       `;
       const cycle = () => this._cycleModel();
       wrap.addEventListener('click', cycle);
@@ -578,11 +604,11 @@
         }
 
         el.title = isExact
-          ? `${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens (exact, reported by DeepSeek) \u00b7 ${model.label}\n` +
-            `Click to change the assumed model.`
-          : `~${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens estimated (${model.label})\n` +
-            `Estimate only - waiting on the first response to get an exact count from DeepSeek.\n` +
-            `Click to change the assumed model.`;
+        ? `${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens (exact, reported by DeepSeek) \u00b7 ${model.label}\n` +
+        `Click to change the assumed model.`
+        : `~${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens estimated (${model.label})\n` +
+        `Estimate only - waiting on the first response to get an exact count from DeepSeek.\n` +
+        `Click to change the assumed model.`;
       } catch (err) {
         console.debug(`${BRAND_NAME}: context meter error`, err);
       }
@@ -596,115 +622,115 @@
   const TokenCounter = {
     _processed: new WeakSet(),
 
-    /**
-     * Rough token estimate that's aware of CJK text, since "chars / 4" is a
-     * reasonable approximation for English/Latin text but badly undercounts
-     * for Chinese/Japanese/Korean, where each character is closer to its own
-     * token. We split the text into CJK vs. non-CJK spans and estimate each
-     * separately, which keeps the common case cheap and fixes the worst
-     * failure mode of the naive approach.
-     */
-    estimate(text) {
-      if (!text) return 0;
-      const clean = text.replace(/\s+/g, ' ').trim();
-      if (!clean.length) return 0;
+ /**
+  * Rough token estimate that's aware of CJK text, since "chars / 4" is a
+  * reasonable approximation for English/Latin text but badly undercounts
+  * for Chinese/Japanese/Korean, where each character is closer to its own
+  * token. We split the text into CJK vs. non-CJK spans and estimate each
+  * separately, which keeps the common case cheap and fixes the worst
+  * failure mode of the naive approach.
+  */
+ estimate(text) {
+   if (!text) return 0;
+   const clean = text.replace(/\s+/g, ' ').trim();
+   if (!clean.length) return 0;
 
-      const cjkMatches = clean.match(/[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/g);
-      const cjkCount = cjkMatches ? cjkMatches.length : 0;
-      const otherCount = clean.length - cjkCount;
+   const cjkMatches = clean.match(/[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/g);
+   const cjkCount = cjkMatches ? cjkMatches.length : 0;
+   const otherCount = clean.length - cjkCount;
 
-      const tokens =
-        cjkCount / CONFIG.tokenCounter.cjkCharsPerToken + otherCount / CONFIG.tokenCounter.latinCharsPerToken;
+   const tokens =
+   cjkCount / CONFIG.tokenCounter.cjkCharsPerToken + otherCount / CONFIG.tokenCounter.latinCharsPerToken;
 
-      return Math.max(1, Math.round(tokens));
-    },
+   return Math.max(1, Math.round(tokens));
+ },
 
-    scan() {
-      try {
-        const messages = DOM.findMessages();
-        messages.forEach((message) => this._processMessage(message));
-      } catch (err) {
-        console.debug(`${BRAND_NAME}: token counter error`, err);
-      }
-    },
+ scan() {
+   try {
+     const messages = DOM.findMessages();
+     messages.forEach((message) => this._processMessage(message));
+   } catch (err) {
+     console.debug(`${BRAND_NAME}: token counter error`, err);
+   }
+ },
 
-    _isAssistantMessage(message) {
-      const looksLikeUser =
-        message.classList.contains('d29f3d7d') || message.querySelector(CONFIG.selectors.userMessageMarker) !== null;
-      return !looksLikeUser;
-    },
+ _isAssistantMessage(message) {
+   const looksLikeUser =
+   message.classList.contains('d29f3d7d') || message.querySelector(CONFIG.selectors.userMessageMarker) !== null;
+   return !looksLikeUser;
+ },
 
-    _processMessage(message) {
-      if (this._processed.has(message)) return;
-      if (message.querySelector('.deepblue-token-counter')) {
-        this._processed.add(message);
-        return;
-      }
-      if (!this._isAssistantMessage(message)) return;
+ _processMessage(message) {
+   if (this._processed.has(message)) return;
+   if (message.querySelector('.deepblue-token-counter')) {
+     this._processed.add(message);
+     return;
+   }
+   if (!this._isAssistantMessage(message)) return;
 
-      const markdown = message.querySelector(CONFIG.selectors.markdown);
-      if (!markdown) return;
+   const markdown = message.querySelector(CONFIG.selectors.markdown);
+   if (!markdown) return;
 
-      const actionRow = queryFirst(CONFIG.selectors.messageActionRow, message.parentElement || document);
-      const buttonRow = actionRow ? queryFirst(CONFIG.selectors.messageButtonRow, actionRow) : null;
-      // The button row (copy/regenerate/etc.) only renders once the response has
-      // finished streaming, so its appearance doubles as our "generation done"
-      // signal - this is the point where we consume the pending start time.
-      if (!buttonRow) return;
+   const actionRow = queryFirst(CONFIG.selectors.messageActionRow, message.parentElement || document);
+   const buttonRow = actionRow ? queryFirst(CONFIG.selectors.messageButtonRow, actionRow) : null;
+   // The button row (copy/regenerate/etc.) only renders once the response has
+   // finished streaming, so its appearance doubles as our "generation done"
+   // signal - this is the point where we consume the pending start time.
+   if (!buttonRow) return;
 
-      const tokenCount = this.estimate(markdown.textContent);
-      const elapsedSeconds = GenerationTimer.consumeElapsedSeconds();
+   const tokenCount = this.estimate(markdown.textContent);
+   const elapsedSeconds = GenerationTimer.consumeElapsedSeconds();
 
-      buttonRow.insertBefore(this._buildBadge(tokenCount, elapsedSeconds), this._findInsertAnchor(buttonRow));
-      this._processed.add(message);
-    },
+   buttonRow.insertBefore(this._buildBadge(tokenCount, elapsedSeconds), this._findInsertAnchor(buttonRow));
+   this._processed.add(message);
+ },
 
-    _findInsertAnchor(buttonRow) {
-      return buttonRow.querySelector(CONFIG.selectors.shareButton) || buttonRow.lastElementChild || null;
-    },
+ _findInsertAnchor(buttonRow) {
+   return buttonRow.querySelector(CONFIG.selectors.shareButton) || buttonRow.lastElementChild || null;
+ },
 
-    _buildBadge(tokenCount, elapsedSeconds) {
-      const badge = document.createElement('div');
-      badge.className = 'deepblue-token-counter';
-      badge.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 11px;
-        font-weight: 500;
-        color: #8e8e93;
-        padding: 0 6px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        user-select: none;
-        height: 28px;
-        letter-spacing: 0.2px;
-        opacity: 0.7;
-        border-left: 1px solid #e9ecf0;
-        margin-left: 4px;
-        padding-left: 10px;
-      `;
+ _buildBadge(tokenCount, elapsedSeconds) {
+   const badge = document.createElement('div');
+   badge.className = 'deepblue-token-counter';
+   badge.style.cssText = `
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   font-size: 11px;
+   font-weight: 500;
+   color: #8e8e93;
+   padding: 0 6px;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   user-select: none;
+   height: 28px;
+   letter-spacing: 0.2px;
+   opacity: 0.7;
+   border-left: 1px solid #e9ecf0;
+   margin-left: 4px;
+   padding-left: 10px;
+   `;
 
-      const timeLabel = GenerationTimer.format(elapsedSeconds);
-      badge.title = timeLabel
-        ? `Estimated tokens: ${tokenCount} \u00b7 Generated in ${timeLabel}`
-        : `Estimated tokens: ${tokenCount}`;
+   const timeLabel = GenerationTimer.format(elapsedSeconds);
+   badge.title = timeLabel
+   ? `Estimated tokens: ${tokenCount} \u00b7 Generated in ${timeLabel}`
+   : `Estimated tokens: ${tokenCount}`;
 
-      badge.innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
-          <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
-          <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
-        </svg>
-        <span>${tokenCount}</span>
-        <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
-        ${
-          timeLabel
-            ? `<span style="opacity: 0.4;">&middot;</span>
-        <span>${escapeHtml(timeLabel)}</span>`
-            : ''
-        }
-      `;
-      return badge;
-    },
+   badge.innerHTML = `
+   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
+   <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
+   <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
+   </svg>
+   <span>${tokenCount}</span>
+   <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
+   ${
+     timeLabel
+     ? `<span style="opacity: 0.4;">&middot;</span>
+     <span>${escapeHtml(timeLabel)}</span>`
+     : ''
+   }
+   `;
+   return badge;
+ },
   };
 
   // ---------------------------------------------------------------------
@@ -828,7 +854,7 @@
       const messages = [];
       containers.forEach((container) => {
         const isUser =
-          container.classList.contains('d29f3d7d') || container.querySelector(CONFIG.selectors.userMessageMarker) !== null;
+        container.classList.contains('d29f3d7d') || container.querySelector(CONFIG.selectors.userMessageMarker) !== null;
 
         let content = '';
         if (isUser) {
@@ -920,7 +946,7 @@
 
         case 'div':
           if (node.className?.includes('ds-markdown')) return this._renderNodeChildren(node);
-        // fall through intentionally for generic divs
+          // fall through intentionally for generic divs
         default:
           if (node.children?.length) {
             let out = '';
@@ -941,12 +967,12 @@
       const root = document.createElement('div');
       root.id = CONFIG.ids.renderStage;
       root.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: -100000px;
-        width: ${CONFIG.pdf.contentWidthPx}px;
-        background: #ffffff;
-        z-index: -1;
+      position: fixed;
+      top: 0;
+      left: -100000px;
+      width: ${CONFIG.pdf.contentWidthPx}px;
+      background: #ffffff;
+      z-index: -1;
       `;
 
       const style = document.createElement('style');
@@ -959,9 +985,9 @@
       const header = document.createElement('div');
       header.className = 'db-header';
       header.innerHTML = `
-        <div class="db-logo">${escapeHtml(BRAND_NAME)}</div>
-        <h1 class="db-title">${escapeHtml(conversation.title)}</h1>
-        <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${conversation.messages.length} messages</div>
+      <div class="db-logo">${escapeHtml(BRAND_NAME)}</div>
+      <h1 class="db-title">${escapeHtml(conversation.title)}</h1>
+      <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${conversation.messages.length} messages</div>
       `;
       root.appendChild(header);
       blocks.push(header);
@@ -971,8 +997,8 @@
         el.className = `db-message db-${msg.role}`;
         const body = msg.isHTML ? msg.content : `<p>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</p>`;
         el.innerHTML = `
-          <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
-          <div class="db-content">${body}</div>
+        <div class="db-role-label"><span class="db-dot"></span>${msg.role === 'user' ? 'You' : 'DeepSeek'}</div>
+        <div class="db-content">${body}</div>
         `;
         root.appendChild(el);
         blocks.push(el);
@@ -989,49 +1015,49 @@
 
     _css() {
       return `
-        #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
-          box-sizing: border-box;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          color: #1d1d1f;
-        }
-        #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
-        #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
-        #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
-        #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
+      #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1d1d1f;
+      }
+      #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
+      #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
+      #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
+      #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
 
-        #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
-        #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
-        #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
-        #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
-        #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
-        #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
+      #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
+      #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+      #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+      #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
+      #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
 
-        #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
-        #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
-        #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
-        #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
-        #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
-        #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
-        #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
-        #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
-        #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
-        #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
-        #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
-        #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
-        #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
-        #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-        #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
-        #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
+      #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
+      #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
+      #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
+      #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
+      #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
+      #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
+      #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
+      #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
+      #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
+      #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+      #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
+      #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
 
-        #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
-        #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
-        #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
-        #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
-        #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
+      #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
+      #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
+      #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
+      #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
 
-        #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
-        #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
+      #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
+      #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
       `;
     },
   };
