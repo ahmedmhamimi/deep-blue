@@ -37,6 +37,10 @@
       sidebarSearchBar: 'deepblue-sidebar-search',
       sidebarSearchInput: 'deepblue-sidebar-search-input',
       sidebarSearchClear: 'deepblue-sidebar-search-clear',
+      folderSection: 'deepblue-folder-section',
+      folderList: 'deepblue-folder-list',
+      folderAddBtn: 'deepblue-folder-add-btn',
+      folderMenu: 'deepblue-folder-menu',
     },
     selectors: {
       fileInput: 'input[type="file"][multiple], input[type="file"]',
@@ -65,6 +69,7 @@
       sidebarDateLabel: '.f3d18f6a',
       sidebarConversationLink: 'a._546d736',
       sidebarConversationTitle: '.c08e6e93',
+      sidebarConversationHref: 'a._546d736[href*="/chat/s/"]',
     },
     charCounter: {
       warnAt: 500,
@@ -79,19 +84,33 @@
       codeCharsPerToken: 3.0,
       limit: 1048576,
     },
+    folders: {
+      storageKey: 'deepblue-folders-v1',
+      assignmentsKey: 'deepblue-folder-assignments-v1',
+      palette: [
+        { name: 'Blue', hex: '#3964fe' },
+        { name: 'Purple', hex: '#6c5ce7' },
+        { name: 'Green', hex: '#22c55e' },
+        { name: 'Orange', hex: '#f97316' },
+        { name: 'Red', hex: '#ef4444' },
+        { name: 'Pink', hex: '#ec4899' },
+        { name: 'Teal', hex: '#14b8a6' },
+        { name: 'Gray', hex: '#6b7280' },
+      ],
+    },
     timing: {
       initialScanDelayMs: 1200,
-      observerDebounceMs: 300,
-      postClickRecheckDelaysMs: [0, 120, 350],
+ observerDebounceMs: 300,
+ postClickRecheckDelaysMs: [0, 120, 350],
     },
     pdf: {
       pageWidthPt: 595.28,
-      pageHeightPt: 841.89,
-      marginPt: 36,
-      contentWidthPx: 760,
-      renderScale: 2,
-      jpegQuality: 0.95,
-      blockSpacingPt: 10,
+ pageHeightPt: 841.89,
+ marginPt: 36,
+ contentWidthPx: 760,
+ renderScale: 2,
+ jpegQuality: 0.95,
+ blockSpacingPt: 10,
     },
   };
 
@@ -139,6 +158,57 @@
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }
 
+  function conversationIdFromHref(href) {
+    if (!href) return null;
+    const match = href.match(/\/chat\/s\/([a-zA-Z0-9-]+)/);
+    return match ? match[1] : null;
+  }
+
+  function uid() {
+    return 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  const Store = {
+    _read(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed == null ? fallback : parsed;
+      } catch (err) {
+        console.debug(`${BRAND_NAME}: storage read error`, err);
+        return fallback;
+      }
+    },
+
+ _write(key, value) {
+   try {
+     localStorage.setItem(key, JSON.stringify(value));
+     return true;
+   } catch (err) {
+     console.debug(`${BRAND_NAME}: storage write error`, err);
+     return false;
+   }
+ },
+
+ getFolders() {
+   return this._read(CONFIG.folders.storageKey, []);
+ },
+
+ setFolders(folders) {
+   return this._write(CONFIG.folders.storageKey, folders);
+ },
+
+ getAssignments() {
+   // conversationId -> folderId
+   return this._read(CONFIG.folders.assignmentsKey, {});
+ },
+
+ setAssignments(assignments) {
+   return this._write(CONFIG.folders.assignmentsKey, assignments);
+ },
+  };
+
   // ---------------------------------------------------------------------
   // DOM lookups
   // ---------------------------------------------------------------------
@@ -153,97 +223,97 @@
       return wrapper || scope.querySelector?.(CONFIG.selectors.primaryCircleButton)?.parentElement || null;
     },
 
- findTextarea() {
-   return queryFirst(CONFIG.selectors.textarea);
- },
+    findTextarea() {
+      return queryFirst(CONFIG.selectors.textarea);
+    },
 
- findMessages() {
-   const primary = document.querySelectorAll(CONFIG.selectors.messages[0]);
-   if (primary.length) return primary;
-   return document.querySelectorAll(CONFIG.selectors.messages[1]);
- },
+    findMessages() {
+      const primary = document.querySelectorAll(CONFIG.selectors.messages[0]);
+      if (primary.length) return primary;
+      return document.querySelectorAll(CONFIG.selectors.messages[1]);
+    },
 
- findConversationTitle() {
-   const el = queryFirst(CONFIG.selectors.title);
-   return el?.textContent?.trim() || 'DeepSeek Conversation';
- },
+    findConversationTitle() {
+      const el = queryFirst(CONFIG.selectors.title);
+      return el?.textContent?.trim() || 'DeepSeek Conversation';
+    },
 
- findTitleContainer() {
-   const el = queryFirst(CONFIG.selectors.titleContainer);
-   return el?.parentElement || el?.closest('div') || null;
- },
+    findTitleContainer() {
+      const el = queryFirst(CONFIG.selectors.titleContainer);
+      return el?.parentElement || el?.closest('div') || null;
+    },
 
- findComposerModeRow() {
-   const textarea = this.findTextarea();
-   const scope = textarea?.closest('form') || textarea?.parentElement?.parentElement?.parentElement || document;
-   const candidates = scope.querySelectorAll('div, button, span');
-   for (const el of candidates) {
-     if (el.children.length > 0) continue;
-     if (el.textContent?.trim().toLowerCase() !== 'search') continue;
-     let row = el.parentElement;
-     for (let i = 0; i < 3 && row; i++) {
-       if (row.textContent?.toLowerCase().includes('deepthink')) return row;
-       row = row.parentElement;
-     }
-     return el.parentElement;
-   }
-   return null;
- },
+    findComposerModeRow() {
+      const textarea = this.findTextarea();
+      const scope = textarea?.closest('form') || textarea?.parentElement?.parentElement?.parentElement || document;
+      const candidates = scope.querySelectorAll('div, button, span');
+      for (const el of candidates) {
+        if (el.children.length > 0) continue;
+        if (el.textContent?.trim().toLowerCase() !== 'search') continue;
+        let row = el.parentElement;
+        for (let i = 0; i < 3 && row; i++) {
+          if (row.textContent?.toLowerCase().includes('deepthink')) return row;
+          row = row.parentElement;
+        }
+        return el.parentElement;
+      }
+      return null;
+    },
 
- findHeaderContainer() {
-   const el = queryFirst(CONFIG.selectors.titleContainer);
-   if (el) {
-     let parent = el.parentElement;
-     let attempts = 0;
-     while (parent && attempts < 10) {
-       const tag = parent.tagName?.toLowerCase() || '';
-       if (tag === 'header' ||
-         parent.className?.includes?.('header') ||
-         parent.className?.includes?.('title-bar') ||
-         parent.className?.includes?.('conversation-header')) {
-         return parent;
-         }
-         parent = parent.parentElement;
-       attempts++;
-     }
-     return el.closest('header') || el.closest('[class*="header"]') || el.parentElement?.parentElement || null;
-   }
-   return null;
- },
+    findHeaderContainer() {
+      const el = queryFirst(CONFIG.selectors.titleContainer);
+      if (el) {
+        let parent = el.parentElement;
+        let attempts = 0;
+        while (parent && attempts < 10) {
+          const tag = parent.tagName?.toLowerCase() || '';
+          if (tag === 'header' ||
+            parent.className?.includes?.('header') ||
+            parent.className?.includes?.('title-bar') ||
+            parent.className?.includes?.('conversation-header')) {
+            return parent;
+            }
+            parent = parent.parentElement;
+          attempts++;
+        }
+        return el.closest('header') || el.closest('[class*="header"]') || el.parentElement?.parentElement || null;
+      }
+      return null;
+    },
 
- getVisibleMessageElements() {
-   // Get all message elements that are currently rendered in the virtual list
-   const visibleContainer = document.querySelector(CONFIG.selectors.visibleItems);
-   if (!visibleContainer) return [];
+    getVisibleMessageElements() {
+      // Get all message elements that are currently rendered in the virtual list
+      const visibleContainer = document.querySelector(CONFIG.selectors.visibleItems);
+      if (!visibleContainer) return [];
 
-   const messageElements = visibleContainer.querySelectorAll(CONFIG.selectors.messages[0]);
-   if (messageElements.length) return messageElements;
-   return visibleContainer.querySelectorAll(CONFIG.selectors.messages[1]);
- },
+      const messageElements = visibleContainer.querySelectorAll(CONFIG.selectors.messages[0]);
+      if (messageElements.length) return messageElements;
+      return visibleContainer.querySelectorAll(CONFIG.selectors.messages[1]);
+    },
 
- getAllMessageElements() {
-   // Get all message containers from the virtual list items
-   const virtualItems = document.querySelectorAll('[data-virtual-list-item-key]');
-   const messages = [];
-   virtualItems.forEach((item) => {
-     const msg = item.querySelector(CONFIG.selectors.messages[0]) ||
-     item.querySelector(CONFIG.selectors.messages[1]);
-     if (msg) messages.push(msg);
-   });
-     return messages.length ? messages : this.findMessages();
- },
+    getAllMessageElements() {
+      // Get all message containers from the virtual list items
+      const virtualItems = document.querySelectorAll('[data-virtual-list-item-key]');
+      const messages = [];
+      virtualItems.forEach((item) => {
+        const msg = item.querySelector(CONFIG.selectors.messages[0]) ||
+        item.querySelector(CONFIG.selectors.messages[1]);
+        if (msg) messages.push(msg);
+      });
+        return messages.length ? messages : this.findMessages();
+    },
 
- findSidebarNewChatRow() {
-   return document.querySelector(CONFIG.selectors.sidebarNewChatRow);
- },
+    findSidebarNewChatRow() {
+      return document.querySelector(CONFIG.selectors.sidebarNewChatRow);
+    },
 
- findSidebarListGroups() {
-   return document.querySelector(CONFIG.selectors.sidebarListGroups);
- },
+    findSidebarListGroups() {
+      return document.querySelector(CONFIG.selectors.sidebarListGroups);
+    },
 
- getSidebarConversationLinks() {
-   return Array.from(document.querySelectorAll(CONFIG.selectors.sidebarConversationLink));
- }
+    getSidebarConversationLinks() {
+      return Array.from(document.querySelectorAll(CONFIG.selectors.sidebarConversationLink));
+    }
   };
 
   // ---------------------------------------------------------------------
@@ -1332,110 +1402,704 @@
   };
 
   // ---------------------------------------------------------------------
+  // Folders: organize sidebar conversations into colored, collapsible groups
+  // ---------------------------------------------------------------------
+
+  const Folders = {
+    _expanded: {}, // folderId -> bool, in-memory only (resets on reload, harmless)
+_menuOpenFor: null,
+
+ ensureInjected() {
+   if (document.getElementById(CONFIG.ids.folderSection)) {
+     this._syncRows();
+     return;
+   }
+
+   const anchor = document.getElementById(CONFIG.ids.sidebarSearchBar) || DOM.findSidebarNewChatRow();
+   if (!anchor || !anchor.parentElement) return;
+
+   anchor.insertAdjacentElement('afterend', this._buildSection());
+   this._injectStyles();
+   this._wireGlobalListeners();
+   this._syncRows();
+ },
+
+ // -- persistence helpers --------------------------------------------
+
+ _getFolders() {
+   return Store.getFolders();
+ },
+
+ _saveFolders(folders) {
+   Store.setFolders(folders);
+ },
+
+ _getAssignments() {
+   return Store.getAssignments();
+ },
+
+ _saveAssignments(map) {
+   Store.setAssignments(map);
+ },
+
+ _createFolder(name, hex) {
+   const folders = this._getFolders();
+   const folder = { id: uid(), name: name || 'New folder', color: hex || CONFIG.folders.palette[0].hex };
+   folders.push(folder);
+   this._saveFolders(folders);
+   this._expanded[folder.id] = true;
+   this.render();
+   return folder;
+ },
+
+ _renameFolder(id, name) {
+   const folders = this._getFolders();
+   const folder = folders.find((f) => f.id === id);
+   if (!folder) return;
+   folder.name = name || folder.name;
+   this._saveFolders(folders);
+   this.render();
+ },
+
+ _recolorFolder(id, hex) {
+   const folders = this._getFolders();
+   const folder = folders.find((f) => f.id === id);
+   if (!folder) return;
+   folder.color = hex;
+   this._saveFolders(folders);
+   this.render();
+ },
+
+ _deleteFolder(id) {
+   const folders = this._getFolders().filter((f) => f.id !== id);
+   this._saveFolders(folders);
+
+   const assignments = this._getAssignments();
+   Object.keys(assignments).forEach((convId) => {
+     if (assignments[convId] === id) delete assignments[convId];
+   });
+     this._saveAssignments(assignments);
+
+     delete this._expanded[id];
+     this.render();
+ },
+
+ _assign(convId, folderId) {
+   if (!convId) return;
+   const assignments = this._getAssignments();
+   if (folderId) {
+     assignments[convId] = folderId;
+   } else {
+     delete assignments[convId];
+   }
+   this._saveAssignments(assignments);
+   this.render();
+ },
+
+ // -- top-level section (folder list + "new folder") ------------------
+
+ _buildSection() {
+   const section = document.createElement('div');
+   section.id = CONFIG.ids.folderSection;
+   section.style.cssText = `
+   display: flex;
+   flex-direction: column;
+   margin: 4px 12px 8px;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   `;
+
+   const header = document.createElement('div');
+   header.style.cssText = `
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 2px 4px 4px;
+   `;
+   header.innerHTML = `
+   <span style="font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.6px;">Folders</span>
+   `;
+
+   const addBtn = document.createElement('button');
+   addBtn.id = CONFIG.ids.folderAddBtn;
+   addBtn.title = 'New folder';
+   addBtn.style.cssText = `
+   background: none;
+   border: none;
+   cursor: pointer;
+   color: #6c6c72;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 2px 4px;
+   border-radius: 6px;
+   `;
+   addBtn.innerHTML = `
+   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+   </svg>
+   `;
+   addBtn.addEventListener('mouseenter', () => { addBtn.style.background = '#e4e7ed'; addBtn.style.color = '#1d1d1f'; });
+   addBtn.addEventListener('mouseleave', () => { addBtn.style.background = 'none'; addBtn.style.color = '#6c6c72'; });
+   addBtn.addEventListener('click', (e) => {
+     e.stopPropagation();
+     const folder = this._createFolder('New folder', CONFIG.folders.palette[this._getFolders().length % CONFIG.folders.palette.length].hex);
+     // Immediately open the rename editor for the new folder
+     requestAnimationFrame(() => this._startRename(folder.id));
+   });
+
+   header.appendChild(addBtn);
+   section.appendChild(header);
+
+   const list = document.createElement('div');
+   list.id = CONFIG.ids.folderList;
+   list.style.cssText = 'display: flex; flex-direction: column; gap: 1px;';
+   section.appendChild(list);
+
+   this._section = section;
+   this._list = list;
+   this.render();
+   return section;
+ },
+
+ render() {
+   const list = this._list || document.getElementById(CONFIG.ids.folderList);
+   if (!list) return;
+
+   const folders = this._getFolders();
+   const assignments = this._getAssignments();
+
+   list.innerHTML = '';
+
+   if (!folders.length) {
+     const empty = document.createElement('div');
+     empty.textContent = 'No folders yet — click + to add one';
+     empty.style.cssText = 'font-size: 12px; color: #8e8e93; padding: 4px 6px 6px;';
+     list.appendChild(empty);
+     return;
+   }
+
+   folders.forEach((folder) => {
+     list.appendChild(this._buildFolderRow(folder, assignments));
+   });
+ },
+
+ _countInFolder(folderId, assignments) {
+   return Object.values(assignments).filter((f) => f === folderId).length;
+ },
+
+ _buildFolderRow(folder, assignments) {
+   const wrap = document.createElement('div');
+   wrap.className = 'deepblue-folder-row';
+   wrap.dataset.folderId = folder.id;
+
+   const isOpen = !!this._expanded[folder.id];
+   const count = this._countInFolder(folder.id, assignments);
+
+   const head = document.createElement('div');
+   head.className = 'deepblue-folder-head';
+   head.style.cssText = `
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   padding: 6px 6px;
+   border-radius: 8px;
+   cursor: pointer;
+   font-size: 13px;
+   color: #1d1d1f;
+   user-select: none;
+   `;
+   head.addEventListener('mouseenter', () => { head.style.background = '#f0f2f5'; });
+   head.addEventListener('mouseleave', () => { head.style.background = 'none'; });
+
+   head.innerHTML = `
+   <svg class="deepblue-folder-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+   style="flex-shrink:0; transition: transform 0.15s ease; transform: rotate(${isOpen ? '90deg' : '0deg'}); color:#8e8e93;">
+   <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+   </svg>
+   <span class="deepblue-folder-dot" style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
+   <span class="deepblue-folder-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
+   <span style="font-size:11px; color:#8e8e93; flex-shrink:0;">${count}</span>
+   <button class="deepblue-folder-more" title="Folder options" style="
+   background:none; border:none; cursor:pointer; color:#8e8e93; display:flex;
+   align-items:center; justify-content:center; padding:2px 4px; border-radius:6px; flex-shrink:0;
+   ">
+   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>
+   </svg>
+   </button>
+   `;
+
+   head.addEventListener('click', (e) => {
+     if (e.target.closest('.deepblue-folder-more')) return;
+     this._expanded[folder.id] = !this._expanded[folder.id];
+     this.render();
+   });
+
+   const moreBtn = head.querySelector('.deepblue-folder-more');
+   moreBtn.addEventListener('click', (e) => {
+     e.stopPropagation();
+     this._toggleFolderMenu(folder, moreBtn);
+   });
+
+   // Drag-and-drop target
+   head.addEventListener('dragover', (e) => {
+     e.preventDefault();
+     head.style.background = '#e4ecff';
+     head.style.outline = `1.5px dashed ${folder.color}`;
+   });
+   head.addEventListener('dragleave', () => {
+     head.style.background = 'none';
+     head.style.outline = 'none';
+   });
+   head.addEventListener('drop', (e) => {
+     e.preventDefault();
+     head.style.background = 'none';
+     head.style.outline = 'none';
+     const convId = e.dataTransfer.getData('text/deepblue-conv-id');
+     if (convId) this._assign(convId, folder.id);
+   });
+
+     wrap.appendChild(head);
+
+     if (isOpen) {
+       const body = document.createElement('div');
+       body.style.cssText = 'display: flex; flex-direction: column; padding-left: 20px;';
+
+       const convIds = Object.keys(assignments).filter((id) => assignments[id] === folder.id);
+       if (!convIds.length) {
+         const empty = document.createElement('div');
+         empty.textContent = 'Empty — drag a chat here';
+         empty.style.cssText = 'font-size: 11.5px; color: #8e8e93; padding: 4px 6px 6px;';
+         body.appendChild(empty);
+       } else {
+         convIds.forEach((convId) => {
+           body.appendChild(this._buildFolderItem(convId, folder));
+         });
+       }
+
+       wrap.appendChild(body);
+     }
+
+     return wrap;
+ },
+
+ _buildFolderItem(convId, folder) {
+   const link = this._findLiveLinkForConv(convId);
+   const title = link?.querySelector(CONFIG.selectors.sidebarConversationTitle)?.textContent?.trim()
+   || 'Untitled conversation';
+
+   const row = document.createElement('div');
+   row.style.cssText = `
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   padding: 5px 6px;
+   border-radius: 8px;
+   cursor: pointer;
+   font-size: 12.5px;
+   color: #4b5563;
+   `;
+   row.addEventListener('mouseenter', () => { row.style.background = '#f0f2f5'; });
+   row.addEventListener('mouseleave', () => { row.style.background = 'none'; });
+
+   row.innerHTML = `
+   <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(title)}</span>
+   <button title="Remove from folder" style="
+   background:none; border:none; cursor:pointer; color:#8e8e93; opacity:0;
+   display:flex; align-items:center; justify-content:center; padding:2px; border-radius:6px; flex-shrink:0;
+   ">
+   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+   </svg>
+   </button>
+   `;
+
+   const removeBtn = row.querySelector('button');
+   row.addEventListener('mouseenter', () => { removeBtn.style.opacity = '1'; });
+   row.addEventListener('mouseleave', () => { removeBtn.style.opacity = '0'; });
+   removeBtn.addEventListener('click', (e) => {
+     e.stopPropagation();
+     this._assign(convId, null);
+   });
+
+   row.addEventListener('click', (e) => {
+     if (e.target.closest('button')) return;
+     const liveLink = this._findLiveLinkForConv(convId);
+     if (liveLink) liveLink.click();
+   });
+
+     return row;
+ },
+
+ _findLiveLinkForConv(convId) {
+   return DOM.getSidebarConversationLinks().find(
+     (a) => conversationIdFromHref(a.getAttribute('href')) === convId
+   ) || null;
+ },
+
+ // -- folder options menu (rename / recolor / delete) ------------------
+
+ _toggleFolderMenu(folder, anchorEl) {
+   const existing = document.getElementById(CONFIG.ids.folderMenu);
+   if (existing) {
+     existing.remove();
+     if (this._menuOpenFor === folder.id) {
+       this._menuOpenFor = null;
+       return;
+     }
+   }
+   this._menuOpenFor = folder.id;
+
+   const menu = document.createElement('div');
+   menu.id = CONFIG.ids.folderMenu;
+   menu.style.cssText = `
+   position: fixed;
+   z-index: 999999;
+   background: #ffffff;
+   border: 1px solid #e5e7eb;
+   border-radius: 10px;
+   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+   padding: 8px;
+   width: 190px;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   `;
+
+   const rect = anchorEl.getBoundingClientRect();
+   menu.style.top = `${rect.bottom + 4}px`;
+   menu.style.left = `${Math.max(8, rect.right - 190)}px`;
+
+   const renameBtn = document.createElement('button');
+   renameBtn.textContent = 'Rename';
+   renameBtn.style.cssText = this._menuItemStyle();
+   renameBtn.addEventListener('mouseenter', () => renameBtn.style.background = '#f0f2f5');
+   renameBtn.addEventListener('mouseleave', () => renameBtn.style.background = 'none');
+   renameBtn.addEventListener('click', () => {
+     menu.remove();
+     this._menuOpenFor = null;
+     this._startRename(folder.id);
+   });
+   menu.appendChild(renameBtn);
+
+   const colorLabel = document.createElement('div');
+   colorLabel.textContent = 'Color';
+   colorLabel.style.cssText = 'font-size: 11px; color: #8e8e93; padding: 6px 6px 4px; font-weight: 600;';
+   menu.appendChild(colorLabel);
+
+   const swatches = document.createElement('div');
+   swatches.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 6px 6px;';
+   CONFIG.folders.palette.forEach((c) => {
+     const sw = document.createElement('button');
+     sw.title = c.name;
+     sw.style.cssText = `
+     width: 18px; height: 18px; border-radius: 50%; background: ${c.hex}; cursor: pointer;
+     border: 2px solid ${folder.color === c.hex ? '#1d1d1f' : 'transparent'};
+     `;
+     sw.addEventListener('click', () => {
+       this._recolorFolder(folder.id, c.hex);
+       menu.remove();
+       this._menuOpenFor = null;
+     });
+     swatches.appendChild(sw);
+   });
+   menu.appendChild(swatches);
+
+   const divider = document.createElement('div');
+   divider.style.cssText = 'height: 1px; background: #e9ecf0; margin: 4px 0;';
+   menu.appendChild(divider);
+
+   const deleteBtn = document.createElement('button');
+   deleteBtn.textContent = 'Delete folder';
+   deleteBtn.style.cssText = this._menuItemStyle() + 'color:#dc2626;';
+   deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.background = '#fee2e2');
+   deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.background = 'none');
+   deleteBtn.addEventListener('click', () => {
+     menu.remove();
+     this._menuOpenFor = null;
+     this._deleteFolder(folder.id);
+   });
+   menu.appendChild(deleteBtn);
+
+   document.body.appendChild(menu);
+ },
+
+ _menuItemStyle() {
+   return `
+   display: block; width: 100%; text-align: left; background: none; border: none;
+   cursor: pointer; font-size: 13px; color: #1d1d1f; padding: 6px 8px; border-radius: 6px;
+   font-family: inherit;
+   `;
+ },
+
+ _startRename(folderId) {
+   const row = document.querySelector(`.deepblue-folder-row[data-folder-id="${folderId}"] .deepblue-folder-name`);
+   const folder = this._getFolders().find((f) => f.id === folderId);
+   if (!row || !folder) return;
+
+   const input = document.createElement('input');
+   input.type = 'text';
+   input.value = folder.name;
+   input.style.cssText = `
+   flex: 1; font-size: 13px; border: 1px solid #3964fe; border-radius: 4px;
+   padding: 1px 4px; font-family: inherit; outline: none; width: 100%;
+   `;
+
+   row.replaceWith(input);
+   input.focus();
+   input.select();
+
+   const commit = () => {
+     this._renameFolder(folderId, input.value.trim() || folder.name);
+   };
+   input.addEventListener('blur', commit);
+   input.addEventListener('keydown', (e) => {
+     if (e.key === 'Enter') input.blur();
+     if (e.key === 'Escape') { input.value = folder.name; input.blur(); }
+   });
+ },
+
+ // -- per-conversation "add to folder" affordance ----------------------
+
+ _syncRows() {
+   const links = DOM.getSidebarConversationLinks();
+   links.forEach((link) => this._decorateRow(link));
+ },
+
+ _decorateRow(link) {
+   if (link.dataset.deepblueFolderized) return;
+   link.dataset.deepblueFolderized = '1';
+
+   const convId = conversationIdFromHref(link.getAttribute('href'));
+   if (!convId) return;
+
+   const currentPosition = window.getComputedStyle(link).position;
+   if (currentPosition === 'static') {
+     link.style.position = 'relative';
+   }
+
+   link.draggable = true;
+   link.addEventListener('dragstart', (e) => {
+     e.dataTransfer.setData('text/deepblue-conv-id', convId);
+     e.dataTransfer.effectAllowed = 'move';
+   });
+
+   const btn = document.createElement('div');
+   btn.className = 'deepblue-add-to-folder-btn';
+   btn.title = 'Add to folder';
+   btn.setAttribute('role', 'button');
+   btn.style.cssText = `
+   position: absolute;
+   right: 34px;
+   top: 50%;
+   transform: translateY(-50%);
+   display: flex; align-items: center; justify-content: center;
+   width: 20px; height: 20px; border-radius: 6px; cursor: pointer;
+   color: #8e8e93; flex-shrink: 0; opacity: 0; transition: opacity 0.15s ease;
+   background: inherit;
+   z-index: 2;
+   `;
+   btn.innerHTML = `
+   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <path d="M3 7C3 5.89543 3.89543 5 5 5H9L11 7H19C20.1046 7 21 7.89543 21 9V17C21 18.1046 20.1046 19 19 19H5C3.89543 19 3 18.1046 3 17V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+   </svg>
+   `;
+   btn.addEventListener('mouseenter', () => { btn.style.background = '#e4e7ed'; btn.style.color = '#1d1d1f'; });
+   btn.addEventListener('mouseleave', () => { btn.style.background = 'none'; btn.style.color = '#8e8e93'; });
+   btn.addEventListener('click', (e) => {
+     e.preventDefault();
+     e.stopPropagation();
+     this._openAssignMenu(convId, btn);
+   });
+
+   link.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+   link.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+
+   link.appendChild(btn);
+ },
+
+ _openAssignMenu(convId, anchorEl) {
+   const existing = document.getElementById(CONFIG.ids.folderMenu);
+   if (existing) existing.remove();
+
+   const folders = this._getFolders();
+   const assignments = this._getAssignments();
+   const currentFolderId = assignments[convId];
+
+   const menu = document.createElement('div');
+   menu.id = CONFIG.ids.folderMenu;
+   menu.style.cssText = `
+   position: fixed;
+   z-index: 999999;
+   background: #ffffff;
+   border: 1px solid #e5e7eb;
+   border-radius: 10px;
+   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+   padding: 6px;
+   width: 190px;
+   max-height: 260px;
+   overflow-y: auto;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+   `;
+
+   const rect = anchorEl.getBoundingClientRect();
+   menu.style.top = `${rect.bottom + 4}px`;
+   menu.style.left = `${Math.max(8, rect.right - 190)}px`;
+
+   if (!folders.length) {
+     const empty = document.createElement('div');
+     empty.textContent = 'No folders yet. Click + above the search bar to create one.';
+     empty.style.cssText = 'font-size: 12px; color: #8e8e93; padding: 8px;';
+     menu.appendChild(empty);
+   } else {
+     folders.forEach((folder) => {
+       const item = document.createElement('button');
+       item.style.cssText = this._menuItemStyle() + 'display:flex; align-items:center; gap:8px;';
+       const isCurrent = currentFolderId === folder.id;
+       item.innerHTML = `
+       <span style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
+       <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
+       ${isCurrent ? '<span style="color:#3964fe; font-size:12px;">✓</span>' : ''}
+       `;
+       item.addEventListener('mouseenter', () => item.style.background = '#f0f2f5');
+       item.addEventListener('mouseleave', () => item.style.background = 'none');
+       item.addEventListener('click', () => {
+         this._assign(convId, isCurrent ? null : folder.id);
+         menu.remove();
+       });
+       menu.appendChild(item);
+     });
+   }
+
+   document.body.appendChild(menu);
+ },
+
+ _wireGlobalListeners() {
+   if (this._globalWired) return;
+   this._globalWired = true;
+   document.addEventListener('click', (e) => {
+     const menu = document.getElementById(CONFIG.ids.folderMenu);
+     if (menu && !menu.contains(e.target) && !e.target.closest('.deepblue-add-to-folder-btn') && !e.target.closest('.deepblue-folder-more')) {
+       menu.remove();
+       this._menuOpenFor = null;
+     }
+   });
+ },
+
+ _injectStyles() {
+   if (document.getElementById('deepblue-folder-styles')) return;
+   const style = document.createElement('style');
+   style.id = 'deepblue-folder-styles';
+   style.textContent = `
+   #${CONFIG.ids.folderSection} button { font-family: inherit; }
+   `;
+   document.head.appendChild(style);
+ },
+  };
+
+  // ---------------------------------------------------------------------
   // PDF export
   // ---------------------------------------------------------------------
 
   const PdfExport = {
     _running: false,
 
- async run() {
-   if (PdfExport._running) return;
-   PdfExport._running = true;
-   Toolbar.setExportButtonLoading(true);
+    async run() {
+      if (PdfExport._running) return;
+      PdfExport._running = true;
+      Toolbar.setExportButtonLoading(true);
 
-   try {
-     if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
-       alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
-       return;
-     }
+      try {
+        if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
+          alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
+          return;
+        }
 
-     const conversation = Extractor.extract();
-     if (!conversation || conversation.messages.length === 0) {
-       alert('No conversation to export. Please start a chat first.');
-       return;
-     }
+        const conversation = Extractor.extract();
+        if (!conversation || conversation.messages.length === 0) {
+          alert('No conversation to export. Please start a chat first.');
+          return;
+        }
 
-     await PdfExport._generate(conversation);
-   } catch (err) {
-     console.error(`${BRAND_NAME}: export failed`, err);
-     alert('Failed to export conversation. Please try again.');
-   } finally {
-     Toolbar.setExportButtonLoading(false);
-     PdfExport._running = false;
-   }
- },
+        await PdfExport._generate(conversation);
+      } catch (err) {
+        console.error(`${BRAND_NAME}: export failed`, err);
+        alert('Failed to export conversation. Please try again.');
+      } finally {
+        Toolbar.setExportButtonLoading(false);
+        PdfExport._running = false;
+      }
+    },
 
- async _generate(conversation) {
-   const { root, blocks } = Renderer.buildStage(conversation);
-   document.body.appendChild(root);
+    async _generate(conversation) {
+      const { root, blocks } = Renderer.buildStage(conversation);
+      document.body.appendChild(root);
 
-   try {
-     await nextFrame();
+      try {
+        await nextFrame();
 
-     const pdf = new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-     const { pageWidthPt, pageHeightPt, marginPt, renderScale, jpegQuality, blockSpacingPt } = CONFIG.pdf;
-     const contentWidthPt = pageWidthPt - marginPt * 2;
-     const pageContentHeightPt = pageHeightPt - marginPt * 2;
+        const pdf = new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+        const { pageWidthPt, pageHeightPt, marginPt, renderScale, jpegQuality, blockSpacingPt } = CONFIG.pdf;
+        const contentWidthPt = pageWidthPt - marginPt * 2;
+        const pageContentHeightPt = pageHeightPt - marginPt * 2;
 
-     let cursorY = marginPt;
+        let cursorY = marginPt;
 
-     for (const blockEl of blocks) {
-       const canvas = await html2canvas(blockEl, {
-         scale: renderScale,
-         backgroundColor: '#ffffff',
-         useCORS: true,
-         logging: false,
-       });
-       if (!canvas.width || !canvas.height) continue;
+        for (const blockEl of blocks) {
+          const canvas = await html2canvas(blockEl, {
+            scale: renderScale,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            logging: false,
+          });
+          if (!canvas.width || !canvas.height) continue;
 
-       const ratio = contentWidthPt / canvas.width;
-       const blockHeightPt = canvas.height * ratio;
+          const ratio = contentWidthPt / canvas.width;
+          const blockHeightPt = canvas.height * ratio;
 
-       if (blockHeightPt <= pageContentHeightPt) {
-         if (cursorY + blockHeightPt > marginPt + pageContentHeightPt) {
-           pdf.addPage();
-           cursorY = marginPt;
-         }
-         pdf.addImage(canvas.toDataURL('image/jpeg', jpegQuality), 'JPEG', marginPt, cursorY, contentWidthPt, blockHeightPt);
-         cursorY += blockHeightPt + blockSpacingPt;
-       } else {
-         cursorY = PdfExport._addSlicedBlock(pdf, canvas, ratio, cursorY, contentWidthPt, pageContentHeightPt, marginPt, jpegQuality, blockSpacingPt);
-       }
-     }
+          if (blockHeightPt <= pageContentHeightPt) {
+            if (cursorY + blockHeightPt > marginPt + pageContentHeightPt) {
+              pdf.addPage();
+              cursorY = marginPt;
+            }
+            pdf.addImage(canvas.toDataURL('image/jpeg', jpegQuality), 'JPEG', marginPt, cursorY, contentWidthPt, blockHeightPt);
+            cursorY += blockHeightPt + blockSpacingPt;
+          } else {
+            cursorY = PdfExport._addSlicedBlock(pdf, canvas, ratio, cursorY, contentWidthPt, pageContentHeightPt, marginPt, jpegQuality, blockSpacingPt);
+          }
+        }
 
-     pdf.save(sanitizeFilename(conversation.title) + '.pdf');
-   } finally {
-     root.remove();
-   }
- },
+        pdf.save(sanitizeFilename(conversation.title) + '.pdf');
+      } finally {
+        root.remove();
+      }
+    },
 
- _addSlicedBlock(pdf, canvas, ratio, cursorY, contentWidthPt, pageContentHeightPt, marginPt, jpegQuality, blockSpacingPt) {
-   const pxPerPage = pageContentHeightPt / ratio;
-   let sy = 0;
-   let first = true;
+    _addSlicedBlock(pdf, canvas, ratio, cursorY, contentWidthPt, pageContentHeightPt, marginPt, jpegQuality, blockSpacingPt) {
+      const pxPerPage = pageContentHeightPt / ratio;
+      let sy = 0;
+      let first = true;
 
-   while (sy < canvas.height) {
-     const sliceHeightPx = Math.min(pxPerPage, canvas.height - sy);
-     const sliceCanvas = document.createElement('canvas');
-     sliceCanvas.width = canvas.width;
-     sliceCanvas.height = sliceHeightPx;
-     const ctx = sliceCanvas.getContext('2d');
-     ctx.fillStyle = '#ffffff';
-     ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-     ctx.drawImage(canvas, 0, sy, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+      while (sy < canvas.height) {
+        const sliceHeightPx = Math.min(pxPerPage, canvas.height - sy);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sy, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
 
-     const sliceHeightPt = sliceHeightPx * ratio;
-     if (!first || cursorY + sliceHeightPt > marginPt + pageContentHeightPt) {
-       pdf.addPage();
-       cursorY = marginPt;
-     }
-     pdf.addImage(sliceCanvas.toDataURL('image/jpeg', jpegQuality), 'JPEG', marginPt, cursorY, contentWidthPt, sliceHeightPt);
-     cursorY += sliceHeightPt + blockSpacingPt;
-     sy += sliceHeightPx;
-     first = false;
-   }
-   return cursorY;
- },
+        const sliceHeightPt = sliceHeightPx * ratio;
+        if (!first || cursorY + sliceHeightPt > marginPt + pageContentHeightPt) {
+          pdf.addPage();
+          cursorY = marginPt;
+        }
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', jpegQuality), 'JPEG', marginPt, cursorY, contentWidthPt, sliceHeightPt);
+        cursorY += sliceHeightPt + blockSpacingPt;
+        sy += sliceHeightPx;
+        first = false;
+      }
+      return cursorY;
+    },
   };
 
   // ---------------------------------------------------------------------
@@ -1467,91 +2131,91 @@
       return { title, messages };
     },
 
- _renderNodeChildren(el) {
-   let html = '';
-   for (const child of el.children) html += this._renderNode(child);
-   return html;
- },
+    _renderNodeChildren(el) {
+      let html = '';
+      for (const child of el.children) html += this._renderNode(child);
+      return html;
+    },
 
- _renderNode(node) {
-   const tag = node.tagName?.toLowerCase();
+    _renderNode(node) {
+      const tag = node.tagName?.toLowerCase();
 
-   switch (tag) {
-     case 'p':
-     case 'h1':
-     case 'h2':
-     case 'h3':
-     case 'h4':
-     case 'strong':
-     case 'b':
-     case 'em':
-     case 'i':
-     case 'span':
-       return `<${tag}>${node.innerHTML}</${tag}>`;
+      switch (tag) {
+        case 'p':
+        case 'h1':
+        case 'h2':
+        case 'h3':
+        case 'h4':
+        case 'strong':
+        case 'b':
+        case 'em':
+        case 'i':
+        case 'span':
+          return `<${tag}>${node.innerHTML}</${tag}>`;
 
-     case 'br':
-       return '<br>';
-     case 'hr':
-       return '<hr>';
+        case 'br':
+          return '<br>';
+        case 'hr':
+          return '<hr>';
 
-     case 'a': {
-       const href = node.getAttribute('href') || '';
-       return `<a href="${escapeHtml(href)}">${node.innerHTML}</a>`;
-     }
+        case 'a': {
+          const href = node.getAttribute('href') || '';
+          return `<a href="${escapeHtml(href)}">${node.innerHTML}</a>`;
+        }
 
-     case 'blockquote':
-       return `<blockquote>${this._renderNodeChildren(node)}</blockquote>`;
+        case 'blockquote':
+          return `<blockquote>${this._renderNodeChildren(node)}</blockquote>`;
 
-     case 'ul':
-     case 'ol': {
-       let inner = '';
-       node.querySelectorAll(':scope > li').forEach((li) => {
-         inner += `<li>${li.innerHTML}</li>`;
-       });
-       return `<${tag}>${inner}</${tag}>`;
-     }
+        case 'ul':
+        case 'ol': {
+          let inner = '';
+          node.querySelectorAll(':scope > li').forEach((li) => {
+            inner += `<li>${li.innerHTML}</li>`;
+          });
+          return `<${tag}>${inner}</${tag}>`;
+        }
 
-     case 'table': {
-       let rows = '';
-       node.querySelectorAll('tr').forEach((tr) => {
-         let cells = '';
-         tr.querySelectorAll('th, td').forEach((cell) => {
-           const cellTag = cell.tagName.toLowerCase();
-           cells += `<${cellTag}>${cell.innerHTML}</${cellTag}>`;
-         });
-         rows += `<tr>${cells}</tr>`;
-       });
-       return `<table>${rows}</table>`;
-     }
+        case 'table': {
+          let rows = '';
+          node.querySelectorAll('tr').forEach((tr) => {
+            let cells = '';
+            tr.querySelectorAll('th, td').forEach((cell) => {
+              const cellTag = cell.tagName.toLowerCase();
+              cells += `<${cellTag}>${cell.innerHTML}</${cellTag}>`;
+            });
+            rows += `<tr>${cells}</tr>`;
+          });
+          return `<table>${rows}</table>`;
+        }
 
-     case 'pre': {
-       const codeEl = node.querySelector('code');
-       const codeText = (codeEl || node).textContent;
-       const language = codeEl?.className?.replace('language-', '').trim();
-       return (
-         `<div class="code-block">` +
-         (language ? `<div class="code-header">${escapeHtml(language)}</div>` : '') +
-         `<pre><code>${escapeHtml(codeText)}</code></pre></div>`
-       );
-     }
+        case 'pre': {
+          const codeEl = node.querySelector('code');
+          const codeText = (codeEl || node).textContent;
+          const language = codeEl?.className?.replace('language-', '').trim();
+          return (
+            `<div class="code-block">` +
+            (language ? `<div class="code-header">${escapeHtml(language)}</div>` : '') +
+            `<pre><code>${escapeHtml(codeText)}</code></pre></div>`
+          );
+        }
 
-     case 'code':
-       return `<code class="inline-code">${escapeHtml(node.textContent)}</code>`;
+        case 'code':
+          return `<code class="inline-code">${escapeHtml(node.textContent)}</code>`;
 
-     case 'img':
-       return '';
+        case 'img':
+          return '';
 
-     case 'div':
-       if (node.className?.includes('ds-markdown')) return this._renderNodeChildren(node);
-     default:
-       if (node.children?.length) {
-         let out = '';
-         for (const child of node.children) out += this._renderNode(child);
-         return out;
-       }
-       return node.textContent ? escapeHtml(node.textContent) : '';
-   }
- },
+        case 'div':
+          if (node.className?.includes('ds-markdown')) return this._renderNodeChildren(node);
+        default:
+          if (node.children?.length) {
+            let out = '';
+            for (const child of node.children) out += this._renderNode(child);
+            return out;
+          }
+          return node.textContent ? escapeHtml(node.textContent) : '';
+      }
+    },
   };
 
   // ---------------------------------------------------------------------
@@ -1609,53 +2273,53 @@
       return { root, blocks };
     },
 
- _css() {
-   return `
-   #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
-   box-sizing: border-box;
-   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-   color: #1d1d1f;
-   }
-   #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
-   #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
-   #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
-   #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
+    _css() {
+      return `
+      #${CONFIG.ids.renderStage}, #${CONFIG.ids.renderStage} * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1d1d1f;
+      }
+      #${CONFIG.ids.renderStage} .db-header { text-align: center; padding: 20px 24px 16px; border-bottom: 3px solid #3964fe; margin-bottom: 16px; }
+      #${CONFIG.ids.renderStage} .db-logo { font-size: 26px; font-weight: 700; color: #3964fe; letter-spacing: -0.5px; }
+      #${CONFIG.ids.renderStage} .db-title { font-size: 17px; font-weight: 500; margin: 6px 0 3px; word-break: break-word; }
+      #${CONFIG.ids.renderStage} .db-subtitle { font-size: 12px; color: #8e8e93; }
 
-   #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
-   #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
-   #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
-   #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-   #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
-   #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
-   #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-message { margin: 0 4px 14px; padding: 14px 20px; border-radius: 10px; border: 1px solid #e9ecf0; }
+      #${CONFIG.ids.renderStage} .db-message.db-user { background: #f0f7ff; border-color: #d0e0ff; border-left: 4px solid #3964fe; }
+      #${CONFIG.ids.renderStage} .db-message.db-assistant { background: #f8f9fb; border-color: #e9ecf0; border-right: 4px solid #6c5ce7; }
+      #${CONFIG.ids.renderStage} .db-role-label { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+      #${CONFIG.ids.renderStage} .db-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+      #${CONFIG.ids.renderStage} .db-user .db-dot { background: #3964fe; }
+      #${CONFIG.ids.renderStage} .db-assistant .db-dot { background: #6c5ce7; }
 
-   #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
-   #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
-   #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
-   #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
-   #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
-   #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
-   #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
-   #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
-   #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
-   #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
-   #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
-   #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
-   #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
-   #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-   #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
-   #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content { font-size: 14px; line-height: 1.6; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .db-content p { margin: 0 0 8px; }
+      #${CONFIG.ids.renderStage} .db-content p:last-child { margin-bottom: 0; }
+      #${CONFIG.ids.renderStage} .db-content ul, #${CONFIG.ids.renderStage} .db-content ol { padding-left: 22px; margin: 6px 0; }
+      #${CONFIG.ids.renderStage} .db-content li { margin-bottom: 4px; }
+      #${CONFIG.ids.renderStage} .db-content strong { font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content em { font-style: italic; }
+      #${CONFIG.ids.renderStage} .db-content a { color: #3964fe; text-decoration: underline; word-break: break-all; }
+      #${CONFIG.ids.renderStage} .db-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid #d0d5dd; color: #4b5563; }
+      #${CONFIG.ids.renderStage} .db-content h1, #${CONFIG.ids.renderStage} .db-content h2, #${CONFIG.ids.renderStage} .db-content h3 { margin: 10px 0 6px; font-weight: 600; }
+      #${CONFIG.ids.renderStage} .db-content h1 { font-size: 19px; }
+      #${CONFIG.ids.renderStage} .db-content h2 { font-size: 17px; }
+      #${CONFIG.ids.renderStage} .db-content h3 { font-size: 15px; }
+      #${CONFIG.ids.renderStage} .db-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+      #${CONFIG.ids.renderStage} .db-content th, #${CONFIG.ids.renderStage} .db-content td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
+      #${CONFIG.ids.renderStage} .db-content th { background: #f3f4f6; font-weight: 600; }
 
-   #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
-   #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
-   #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
-   #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
-   #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
+      #${CONFIG.ids.renderStage} .code-block { background: #1e1e2e; border-radius: 8px; margin: 10px 0; overflow: hidden; }
+      #${CONFIG.ids.renderStage} .code-header { background: #2d2d44; color: #cdd6f4; font-size: 11px; font-weight: 500; padding: 4px 14px; font-family: 'Menlo', 'Consolas', monospace; border-bottom: 1px solid #3d3d55; }
+      #${CONFIG.ids.renderStage} .code-block pre { margin: 0; padding: 12px 16px; white-space: pre-wrap; word-wrap: break-word; background: #1e1e2e; }
+      #${CONFIG.ids.renderStage} .code-block code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; line-height: 1.5; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; }
+      #${CONFIG.ids.renderStage} .inline-code { background: #f0f0f5; padding: 1px 6px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; color: #d63384; border: 1px solid #e5e5ea; }
 
-   #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
-   #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
-   `;
- },
+      #${CONFIG.ids.renderStage} .db-footer { text-align: center; padding: 14px 0 6px; margin-top: 6px; border-top: 2px solid #e9ecf0; font-size: 11px; color: #8e8e93; }
+      #${CONFIG.ids.renderStage} .db-brand { color: #3964fe; font-weight: 500; }
+      `;
+    },
   };
 
   // ---------------------------------------------------------------------
@@ -1671,8 +2335,12 @@
         node?.closest?.(`#${CONFIG.ids.contextMeter}`) ||
         node?.closest?.(`#${CONFIG.ids.searchBar}`) ||
         node?.closest?.(`#${CONFIG.ids.sidebarSearchBar}`) ||
+        node?.closest?.(`#${CONFIG.ids.folderSection}`) ||
+        node?.closest?.(`#${CONFIG.ids.folderMenu}`) ||
         node?.classList?.contains?.('deepblue-token-counter') ||
-        node?.classList?.contains?.('deepblue-search-highlight')
+        node?.classList?.contains?.('deepblue-search-highlight') ||
+        node?.classList?.contains?.('deepblue-add-to-folder-btn') ||
+        node?.dataset?.deepblueFolderized === '1'
       );
     });
   }
@@ -1685,6 +2353,7 @@
     ChatSearch._injectStyles();
     SidebarSearch.ensureInjected();
     SidebarSearch._reapplyIfActive();
+    Folders.ensureInjected();
   }
 
   const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);
