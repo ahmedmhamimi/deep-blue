@@ -1408,6 +1408,7 @@
   const Folders = {
     _expanded: {}, // folderId -> bool, in-memory only (resets on reload, harmless)
 _menuOpenFor: null,
+ _draggingConvId: null, // same-page drag state; dataTransfer alone is unreliable across some setups
 
  ensureInjected() {
    if (document.getElementById(CONFIG.ids.folderSection)) {
@@ -1644,6 +1645,7 @@ _menuOpenFor: null,
    // Drag-and-drop target
    head.addEventListener('dragover', (e) => {
      e.preventDefault();
+     e.dataTransfer.dropEffect = 'move';
      head.style.background = '#e4ecff';
      head.style.outline = `1.5px dashed ${folder.color}`;
    });
@@ -1655,7 +1657,8 @@ _menuOpenFor: null,
      e.preventDefault();
      head.style.background = 'none';
      head.style.outline = 'none';
-     const convId = e.dataTransfer.getData('text/deepblue-conv-id');
+     const convId = this._draggingConvId || e.dataTransfer.getData('text/deepblue-conv-id') || e.dataTransfer.getData('text/plain');
+     this._draggingConvId = null;
      if (convId) this._assign(convId, folder.id);
    });
 
@@ -1878,8 +1881,18 @@ _menuOpenFor: null,
 
    link.draggable = true;
    link.addEventListener('dragstart', (e) => {
-     e.dataTransfer.setData('text/deepblue-conv-id', convId);
+     this._draggingConvId = convId;
+     try {
+       e.dataTransfer.setData('text/plain', convId);
+       e.dataTransfer.setData('text/deepblue-conv-id', convId);
+     } catch (err) {
+       // Some browsers throw on custom MIME types in certain contexts;
+       // _draggingConvId above is the reliable fallback for same-page drags.
+     }
      e.dataTransfer.effectAllowed = 'move';
+   });
+   link.addEventListener('dragend', () => {
+     this._draggingConvId = null;
    });
 
    const btn = document.createElement('div');
