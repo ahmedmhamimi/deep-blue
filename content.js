@@ -62,26 +62,8 @@
       // (short identifiers, punctuation, indentation) so it gets its own,
       // lower ratio rather than being lumped in with latinCharsPerToken.
       codeCharsPerToken: 3.0,
-      storageKey: 'deepblue-context-model-id',
-      // Bump this whenever defaultModelId/models change in a way that should
-      // override a previously-cycled-to choice sitting in localStorage (e.g.
-      // someone landed on a stale preset while testing). A version mismatch
-      // is treated as "no real choice made yet" and resets to the new default;
-      // a deliberate click after that point sticks until the next bump.
-      presetVersion: 2,
-      defaultModelId: 'v4',
-        // Context-window sizes as published by DeepSeek. The web app doesn't
-        // expose which model is actually serving a given chat, so this is a
-        // user-selectable assumption (click the meter to cycle), not a
-        // detected fact. As of the V4 launch, chat.deepseek.com's Instant
-        // (V4-Flash), Expert (V4-Pro), and Vision modes all share the same
-        // 1M-token context window, so "v4" alone covers all three - V3.2/R1
-        // are kept only as fallbacks for accounts still on the older tier.
-        models: [
-          { id: 'v4', label: 'DeepSeek-V4 \u00b7 Instant/Expert/Vision (1M)', limit: 1048576 },
- { id: 'v3.2', label: 'DeepSeek-V3.2 legacy (128K)', limit: 131072 },
- { id: 'r1', label: 'DeepSeek-R1 legacy (64K)', limit: 65536 },
-        ],
+      // All DeepSeek models now share a 1M token context window
+      limit: 1048576,
     },
     timing: {
       initialScanDelayMs: 1200,
@@ -478,62 +460,10 @@
 
   // ---------------------------------------------------------------------
   // Context-window progress bar - injected next to the DeepThink/Search
-  // toggles. Since the page doesn't disclose which model is serving the
-  // chat, the "limit" half of the fraction is a user-selectable assumption:
-  // clicking the pill cycles through known DeepSeek context sizes, and the
-  // choice is remembered in localStorage.
+  // toggles. All DeepSeek models now share a 1M token context window.
   // ---------------------------------------------------------------------
 
   const ContextMeter = {
-    _selectedModelId: null,
-    _versionKey: `${CONFIG.contextWindow.storageKey}-preset-version`,
-
-    init() {
-      let stored = null;
-      let storedVersion = null;
-      try {
-        stored = localStorage.getItem(CONFIG.contextWindow.storageKey);
-        storedVersion = localStorage.getItem(this._versionKey);
-      } catch (err) {
-        // localStorage can throw in some embedded/privacy contexts - just fall back.
-      }
-
-      const versionMatches = storedVersion === String(CONFIG.contextWindow.presetVersion);
-      const known = versionMatches && CONFIG.contextWindow.models.some((m) => m.id === stored);
-      this._selectedModelId = known ? stored : CONFIG.contextWindow.defaultModelId;
-
-      if (!known) {
-        // Either nothing was stored yet, or it predates a preset-version bump
-        // (defaults changed) - persist the new default so we don't
-        // re-evaluate this every scan.
-        this._persist(this._selectedModelId);
-      }
-    },
-
-    _persist(modelId) {
-      try {
-        localStorage.setItem(CONFIG.contextWindow.storageKey, modelId);
-        localStorage.setItem(this._versionKey, String(CONFIG.contextWindow.presetVersion));
-      } catch (err) {
-        // Ignore - worst case the choice doesn't persist across reloads.
-      }
-    },
-
-    _currentModel() {
-      return (
-        CONFIG.contextWindow.models.find((m) => m.id === this._selectedModelId) || CONFIG.contextWindow.models[0]
-      );
-    },
-
-    _cycleModel() {
-      const models = CONFIG.contextWindow.models;
-      const idx = models.findIndex((m) => m.id === this._selectedModelId);
-      const next = models[(idx + 1) % models.length];
-      this._selectedModelId = next.id;
-      this._persist(next.id);
-      this.scan();
-    },
-
     ensureInjected() {
       if (document.getElementById(CONFIG.ids.contextMeter)) return;
       const row = DOM.findComposerModeRow();
@@ -544,9 +474,6 @@
     _build() {
       const wrap = document.createElement('div');
       wrap.id = CONFIG.ids.contextMeter;
-      wrap.setAttribute('role', 'button');
-      wrap.setAttribute('tabindex', '0');
-      wrap.setAttribute('aria-label', 'Estimated context window usage - click to change assumed model');
       wrap.style.cssText = `
       display: inline-flex;
       align-items: center;
@@ -555,7 +482,6 @@
       font-weight: 500;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       color: #8e8e93;
-      cursor: pointer;
       user-select: none;
       margin-left: 8px;
       padding: 4px 9px;
@@ -569,14 +495,6 @@
       </div>
       <span class="deepblue-context-label">0%</span>
       `;
-      const cycle = () => this._cycleModel();
-      wrap.addEventListener('click', cycle);
-      wrap.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          cycle();
-        }
-      });
       return wrap;
     },
 
@@ -590,8 +508,8 @@
         const isExact = typeof exactTokens === 'number';
         const tokens = isExact ? exactTokens : ContextEstimator.estimateConversation();
 
-        const model = this._currentModel();
-        const pct = model.limit > 0 ? Math.min(100, (tokens / model.limit) * 100) : 0;
+        const limit = CONFIG.contextWindow.limit;
+        const pct = limit > 0 ? Math.min(100, (tokens / limit) * 100) : 0;
 
         const fill = el.querySelector('.deepblue-context-fill');
         const label = el.querySelector('.deepblue-context-label');
@@ -604,11 +522,9 @@
         }
 
         el.title = isExact
-        ? `${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens (exact, reported by DeepSeek) \u00b7 ${model.label}\n` +
-        `Click to change the assumed model.`
-        : `~${tokens.toLocaleString()} / ${model.limit.toLocaleString()} tokens estimated (${model.label})\n` +
-        `Estimate only - waiting on the first response to get an exact count from DeepSeek.\n` +
-        `Click to change the assumed model.`;
+        ? `${tokens.toLocaleString()} / ${limit.toLocaleString()} tokens (exact, reported by DeepSeek)`
+        : `~${tokens.toLocaleString()} / ${limit.toLocaleString()} tokens estimated\n` +
+        `Estimate only - waiting on the first response to get an exact count from DeepSeek.`;
       } catch (err) {
         console.debug(`${BRAND_NAME}: context meter error`, err);
       }
@@ -1096,7 +1012,6 @@
   function start() {
     Bridge.listen();
     Bridge.inject();
-    ContextMeter.init();
     setTimeout(runScan, CONFIG.timing.initialScanDelayMs);
     observer.observe(document.body, { childList: true, subtree: true });
   }
