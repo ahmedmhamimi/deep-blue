@@ -1,0 +1,53 @@
+// store.js - thin, error-safe localStorage wrapper for folder data.
+//
+// Depends on: config.js (CONFIG, BRAND_NAME).
+//
+// Loaded as a classic (non-module) content script listed in manifest.json.
+// Content scripts injected this way share a single JS realm, so top-level
+// `const`/`let` bindings declared here are visible to every file listed
+// AFTER this one in manifest.json's content_scripts[].js array. Keep that
+// array in dependency order; do not wrap module bodies in their own IIFE
+// or this sharing breaks.
+
+'use strict';
+
+const Store = {
+  _read(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed == null ? fallback : parsed;
+    } catch (err) {
+      console.debug(`${BRAND_NAME}: storage read error`, err);
+      return fallback;
+    }
+  },
+
+  _write(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (err) {
+      console.debug(`${BRAND_NAME}: storage write error`, err);
+      return false;
+    }
+  },
+
+  getFolders() {
+    return this._read(CONFIG.folders.storageKey, []);
+  },
+
+  setFolders(folders) {
+    return this._write(CONFIG.folders.storageKey, folders);
+  },
+
+  getAssignments() {
+    // conversationId -> folderId
+    return this._read(CONFIG.folders.assignmentsKey, {});
+  },
+
+  setAssignments(assignments) {
+    return this._write(CONFIG.folders.assignmentsKey, assignments);
+  },
+};

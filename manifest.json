@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DeepBlue",
-  "version": "1.2",
+  "version": "1.0",
   "description": "DeepBlue for Deepseek",
   "host_permissions": [
     "https://chat.deepseek.com/*"
@@ -12,7 +12,28 @@
       "js": [
         "vendor/html2canvas.min.js",
         "vendor/jspdf.umd.min.js",
-        "content.js"
+
+        "src/config.js",
+        "src/utils.js",
+        "src/store.js",
+        "src/dom.js",
+
+        "src/bridge-client.js",
+        "src/features/generation-timer.js",
+        "src/features/char-counter.js",
+        "src/features/token-counter.js",
+        "src/features/context-estimator.js",
+        "src/features/context-meter.js",
+        "src/features/toolbar.js",
+        "src/features/chat-search.js",
+        "src/features/sidebar-search.js",
+        "src/features/folders.js",
+
+        "src/pdf/extractor.js",
+        "src/pdf/renderer.js",
+        "src/pdf/pdf-export.js",
+
+        "src/bootstrap.js"
       ],
       "run_at": "document_end"
     }
