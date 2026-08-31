@@ -50,45 +50,73 @@ const PdfExport = {
     try {
       await nextFrame();
 
-      const pdf = new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
       const { pageWidthPt, pageHeightPt, marginPt, renderScale, jpegQuality, blockSpacingPt } =
         CONFIG.pdf;
       const contentWidthPt = pageWidthPt - marginPt * 2;
       const pageContentHeightPt = pageHeightPt - marginPt * 2;
 
+      // Measure where each message block sits, in CSS px, BEFORE rasterizing.
+      // This is just reading layout the browser already computed - cheap -
+      // and lets us find page-break points without needing a separate
+      // html2canvas call per block. (That was the actual slowness: each
+      // html2canvas() call re-parses the page's stylesheets and clones a
+      // render tree regardless of how small the block is, so N calls cost
+      // roughly N times the fixed overhead, not just N times the pixel
+      // work. For a long conversation that overhead dominates.)
+      const rootTop = root.getBoundingClientRect().top;
+      const blockRects = blocks.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top - rootTop, height: r.height };
+      });
+
+      // One rasterization pass for the whole conversation instead of one
+      // per message.
+      const fullCanvas = await html2canvas(root, {
+        scale: renderScale,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
+      if (!fullCanvas.width || !fullCanvas.height) {
+        throw new Error('PDF render stage produced an empty canvas');
+      }
+
+      const pdf = new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+      const ptPerCanvasPx = contentWidthPt / fullCanvas.width;
+
       let cursorY = marginPt;
 
-      for (const blockEl of blocks) {
-        const canvas = await html2canvas(blockEl, {
-          scale: renderScale,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          logging: false,
-        });
-        if (!canvas.width || !canvas.height) continue;
+      for (const rect of blockRects) {
+        const topPx = rect.top * renderScale;
+        const heightPx = rect.height * renderScale;
+        if (heightPx <= 0) continue;
 
-        const ratio = contentWidthPt / canvas.width;
-        const blockHeightPt = canvas.height * ratio;
+        const blockHeightPt = heightPx * ptPerCanvasPx;
 
         if (blockHeightPt <= pageContentHeightPt) {
           if (cursorY + blockHeightPt > marginPt + pageContentHeightPt) {
             pdf.addPage();
             cursorY = marginPt;
           }
-          pdf.addImage(
-            canvas.toDataURL('image/jpeg', jpegQuality),
-            'JPEG',
+          PdfExport._drawCanvasSlice(
+            pdf,
+            fullCanvas,
+            topPx,
+            heightPx,
             marginPt,
             cursorY,
             contentWidthPt,
-            blockHeightPt
+            blockHeightPt,
+            jpegQuality
           );
           cursorY += blockHeightPt + blockSpacingPt;
         } else {
           cursorY = PdfExport._addSlicedBlock(
             pdf,
-            canvas,
-            ratio,
+            fullCanvas,
+            topPx,
+            heightPx,
+            ptPerCanvasPx,
             cursorY,
             contentWidthPt,
             pageContentHeightPt,
@@ -105,10 +133,39 @@ const PdfExport = {
     }
   },
 
+  // Crops [srcTopPx, srcTopPx + srcHeightPx) out of the master canvas and
+  // draws it into the PDF at the given position, without re-rendering
+  // anything.
+  _drawCanvasSlice(pdf, srcCanvas, srcTopPx, srcHeightPx, x, y, widthPt, heightPt, jpegQuality) {
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = srcCanvas.width;
+    sliceCanvas.height = Math.max(1, Math.round(srcHeightPx));
+    const ctx = sliceCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+    ctx.drawImage(
+      srcCanvas,
+      0,
+      srcTopPx,
+      srcCanvas.width,
+      srcHeightPx,
+      0,
+      0,
+      srcCanvas.width,
+      srcHeightPx
+    );
+    pdf.addImage(sliceCanvas.toDataURL('image/jpeg', jpegQuality), 'JPEG', x, y, widthPt, heightPt);
+  },
+
+  // Same idea as the original per-block slicer, but sources every slice
+  // from a region of the single master canvas instead of rasterizing a
+  // fresh one, for blocks too tall to fit on one page.
   _addSlicedBlock(
     pdf,
-    canvas,
-    ratio,
+    srcCanvas,
+    blockTopPx,
+    blockHeightPx,
+    ptPerCanvasPx,
     cursorY,
     contentWidthPt,
     pageContentHeightPt,
@@ -116,32 +173,28 @@ const PdfExport = {
     jpegQuality,
     blockSpacingPt
   ) {
-    const pxPerPage = pageContentHeightPt / ratio;
+    const pxPerPage = pageContentHeightPt / ptPerCanvasPx;
     let sy = 0;
     let first = true;
 
-    while (sy < canvas.height) {
-      const sliceHeightPx = Math.min(pxPerPage, canvas.height - sy);
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = sliceHeightPx;
-      const ctx = sliceCanvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx.drawImage(canvas, 0, sy, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+    while (sy < blockHeightPx) {
+      const sliceHeightPx = Math.min(pxPerPage, blockHeightPx - sy);
+      const sliceHeightPt = sliceHeightPx * ptPerCanvasPx;
 
-      const sliceHeightPt = sliceHeightPx * ratio;
       if (!first || cursorY + sliceHeightPt > marginPt + pageContentHeightPt) {
         pdf.addPage();
         cursorY = marginPt;
       }
-      pdf.addImage(
-        sliceCanvas.toDataURL('image/jpeg', jpegQuality),
-        'JPEG',
+      PdfExport._drawCanvasSlice(
+        pdf,
+        srcCanvas,
+        blockTopPx + sy,
+        sliceHeightPx,
         marginPt,
         cursorY,
         contentWidthPt,
-        sliceHeightPt
+        sliceHeightPt,
+        jpegQuality
       );
       cursorY += sliceHeightPt + blockSpacingPt;
       sy += sliceHeightPx;

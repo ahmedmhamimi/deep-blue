@@ -22,7 +22,13 @@ const Toolbar = {
 
   ensureInjected() {
     try {
-      if (this.isInjected()) return;
+      if (this.isInjected()) {
+        // Elements are present, but the textarea they're wired to may have
+        // been swapped out from under us - re-check/re-wire every scan
+        // instead of assuming a one-time wire-up is still valid.
+        this._wireCharacterCounter();
+        return;
+      }
 
       const sendWrapper = DOM.findSendButtonWrapper();
       if (!sendWrapper || !sendWrapper.parentNode) return;
@@ -114,10 +120,24 @@ const Toolbar = {
     }
   },
 
-  _charWireDone: false,
+  _wiredTextarea: null,
+  _clickListenerAdded: false,
   _wireCharacterCounter() {
     const textarea = DOM.findTextarea();
-    if (!textarea || this._charWireDone) return;
+    if (!textarea) return;
+
+    // DeepSeek is an SPA: the composer <textarea> node itself can be
+    // swapped out (route change, mode switch, first-message layout shift)
+    // while our injected toolbar elements survive. Re-wiring was previously
+    // gated behind a one-shot flag, so if the textarea wasn't found on the
+    // very first pass - or got replaced later - the counter was silently
+    // wired to a dead element (or never wired at all) and stayed at 0
+    // forever. Instead, only skip when we're already wired to this exact,
+    // still-attached node.
+    if (this._wiredTextarea === textarea && textarea.isConnected) {
+      CharCounter.update(textarea);
+      return;
+    }
 
     CharCounter.update(textarea);
     textarea.addEventListener('input', () => CharCounter.update(textarea));
@@ -130,15 +150,21 @@ const Toolbar = {
       }
     });
 
-    document.addEventListener('click', (e) => {
-      const target = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
-      if (!target || target.id === CONFIG.ids.exportBtn) return;
-      GenerationTimer.noteRequestStart();
-      for (const delay of CONFIG.timing.postClickRecheckDelaysMs) {
-        setTimeout(() => CharCounter.update(DOM.findTextarea()), delay);
-      }
-    });
+    this._wiredTextarea = textarea;
 
-    this._charWireDone = true;
+    // This listener doesn't depend on the textarea node, so it only needs
+    // to be attached once (it always re-queries DOM.findTextarea() at
+    // click time, so it naturally follows any element swap).
+    if (!this._clickListenerAdded) {
+      document.addEventListener('click', (e) => {
+        const target = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
+        if (!target || target.id === CONFIG.ids.exportBtn) return;
+        GenerationTimer.noteRequestStart();
+        for (const delay of CONFIG.timing.postClickRecheckDelaysMs) {
+          setTimeout(() => CharCounter.update(DOM.findTextarea()), delay);
+        }
+      });
+      this._clickListenerAdded = true;
+    }
   },
 };

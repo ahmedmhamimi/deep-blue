@@ -54,16 +54,35 @@ const DOM = {
       textarea?.closest('form') ||
       textarea?.parentElement?.parentElement?.parentElement ||
       document;
+
+    // Search only exists in Instant mode's composer (Expert/Vision hide it
+    // once a chat is active); DeepThink exists in all of them. Anchor on
+    // whichever is actually there: Search when available (so the meter
+    // lands beside it, as in Instant mode), DeepThink otherwise (Expert /
+    // Vision mode).
+    return this._findToggleRow(scope, 'search') || this._findToggleRow(scope, 'deepthink');
+  },
+
+  // Finds the leaf text node matching `label` (a mode-toggle pill's
+  // label), then climbs out of its own label/icon wrapper spans until it
+  // reaches the actual pill element (icon + label, so more than one
+  // child), and returns THAT pill's parent - the row laying sibling pills
+  // out side by side. Returning anything still inside the pill itself
+  // would make a newly appended sibling (our context meter) render inside
+  // the pill's own border/background instead of next to it.
+  _findToggleRow(scope, label) {
     const candidates = scope.querySelectorAll('div, button, span');
     for (const el of candidates) {
       if (el.children.length > 0) continue;
-      if (el.textContent?.trim().toLowerCase() !== 'search') continue;
-      let row = el.parentElement;
-      for (let i = 0; i < 3 && row; i++) {
-        if (row.textContent?.toLowerCase().includes('deepthink')) return row;
-        row = row.parentElement;
+      if (el.textContent?.trim().toLowerCase() !== label) continue;
+
+      let node = el.parentElement;
+      let guard = 0;
+      while (node && node.children.length <= 1 && guard < 6) {
+        node = node.parentElement;
+        guard++;
       }
-      return el.parentElement;
+      return node?.parentElement || node || el.parentElement;
     }
     return null;
   },

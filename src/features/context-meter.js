@@ -14,9 +14,28 @@
 const ContextMeter = {
   ensureInjected() {
     if (document.getElementById(CONFIG.ids.contextMeter)) return;
+
+    // Preferred spot: next to the DeepThink/Search mode toggles. But that
+    // row is located by searching for a "Search" toggle, which DeepSeek
+    // hides while a chat is active in Expert/DeepThink mode. That made the
+    // meter vanish for good the moment a message was sent in that mode,
+    // since it could never be re-anchored after DeepSeek re-rendered the
+    // composer. Fall back to the same send-button toolbar the char counter
+    // and export button use - it always exists, regardless of mode.
     const row = DOM.findComposerModeRow();
-    if (!row) return;
-    row.appendChild(this._build());
+    if (row) {
+      row.appendChild(this._build());
+      return;
+    }
+
+    const sendWrapper = DOM.findSendButtonWrapper();
+    const toolbar = sendWrapper?.parentNode;
+    if (!toolbar) return;
+    const meter = this._build();
+    meter.style.marginLeft = '0';
+    meter.style.marginRight = '4px';
+    meter.style.order = '-998';
+    toolbar.insertBefore(meter, toolbar.firstChild);
   },
 
   _build() {
