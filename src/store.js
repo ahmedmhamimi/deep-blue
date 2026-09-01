@@ -70,4 +70,13 @@ const Store = {
   setToneLastInjected(map) {
     return this._write(CONFIG.tone.lastInjectedKey, map);
   },
+
+  // conversationId -> [{key, role, snippet, addedAt}], newest-added last.
+  getBookmarks() {
+    return this._read(CONFIG.bookmarks.storageKey, {});
+  },
+
+  setBookmarks(map) {
+    return this._write(CONFIG.bookmarks.storageKey, map);
+  },
 };

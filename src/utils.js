@@ -81,6 +81,18 @@ function uid() {
   return 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Small FNV-1a style hash - not cryptographic, just good enough to turn a
+// message's text into a short, stable-ish key so we can recognize the
+// "same" message again later without DeepSeek exposing a real message id.
+function hashText(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+
 // Converts a rendered message's DOM (DeepSeek renders markdown into real
 // <strong>/<em>/<code>/<table>/etc. elements client-side, not raw markdown
 // text) into clean plain text: no **, #, `, |, or other markdown syntax,

@@ -37,6 +37,9 @@ const CONFIG = {
     folderMenu: 'deepblue-folder-menu',
     toneRow: 'deepblue-tone-row',
     toneAddBtn: 'deepblue-tone-add-btn',
+    bookmarkLauncher: 'deepblue-bookmark-launcher',
+    bookmarkBadge: 'deepblue-bookmark-badge',
+    bookmarkPanel: 'deepblue-bookmark-panel',
   },
   selectors: {
     fileInput: 'input[type="file"][multiple], input[type="file"]',
@@ -108,6 +111,10 @@ const CONFIG = {
       { id: 'concise', label: 'Concise', emoji: '✂️' },
       { id: 'empathetic', label: 'Empathetic', emoji: '💛' },
     ],
+  },
+  bookmarks: {
+    storageKey: 'deepblue-bookmarks-v1',
+    snippetLength: 90,
   },
   timing: {
     initialScanDelayMs: 1200,

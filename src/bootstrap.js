@@ -26,6 +26,9 @@ function isOwnMutation(mutations) {
       node?.closest?.(`#${CONFIG.ids.toneRow}`) ||
       node?.classList?.contains?.('deepblue-token-counter') ||
       node?.classList?.contains?.('deepblue-copy-plain-btn') ||
+      node?.classList?.contains?.('deepblue-bookmark-btn') ||
+      node?.closest?.(`#${CONFIG.ids.bookmarkLauncher}`) ||
+      node?.closest?.(`#${CONFIG.ids.bookmarkPanel}`) ||
       node?.classList?.contains?.('deepblue-search-highlight') ||
       node?.classList?.contains?.('deepblue-add-to-folder-btn') ||
       node?.dataset?.deepblueFolderized === '1'
@@ -44,6 +47,7 @@ function runScan() {
   Folders.ensureInjected();
   ToneSelector.ensureInjected();
   CopyPlain.scan();
+  Bookmarks.scan();
 }
 
 const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);
