@@ -1,4 +1,4 @@
-// features/tone-selector.js - a draggable "tone" slider injected below the
+// features/tone-selector.js - a single-row "tone" picker injected below the
 // composer's bottom toolbar (char counter / export / send row). Lets the
 // user pick a response tone (or add their own), which gets appended as a
 // short, ALWAYS VISIBLE tag on the last line of their outgoing message -
@@ -28,7 +28,7 @@ const ToneSelector = {
 
   ensureInjected() {
     if (document.getElementById(CONFIG.ids.toneRow)) {
-      this._positionThumbLabel();
+      this._syncSelectionUI();
       return;
     }
 
@@ -46,13 +46,9 @@ const ToneSelector = {
     const composerBody = toolbarLine?.parentNode;
     if (!toolbarLine || !composerBody) return;
 
-    this._injectSliderStyles();
-
     const row = this._build();
     composerBody.insertBefore(row, toolbarLine.nextSibling);
     this._wireSendInterception();
-
-    nextFrame().then(() => this._positionThumbLabel());
   },
 
   // -- persistence -------------------------------------------------------
@@ -100,7 +96,7 @@ const ToneSelector = {
     state.customTones = state.customTones.filter((t) => t.id !== id);
     if (state.selectedId === id) state.selectedId = 'none';
     this._saveState(state);
-    this._rebuildSlider();
+    this._rebuildPills();
   },
 
   // -- the tag itself ------------------------------------------------------
@@ -214,124 +210,73 @@ const ToneSelector = {
   },
 
   // -- UI ------------------------------------------------------------------
-
-  _injectSliderStyles() {
-    if (document.getElementById('deepblue-tone-slider-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'deepblue-tone-slider-styles';
-    style.textContent = `
-    .deepblue-tone-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 4px;
-      border-radius: 999px;
-      background: var(--deepblue-tone-fill, #e9ecf0);
-      cursor: pointer;
-      margin: 0;
-      outline: none;
-    }
-    .deepblue-tone-slider::-webkit-slider-runnable-track {
-      height: 4px;
-      border-radius: 999px;
-      background: transparent;
-    }
-    .deepblue-tone-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #3964fe;
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.28);
-      margin-top: -5.5px;
-      cursor: grab;
-      transition: transform 0.12s ease;
-    }
-    .deepblue-tone-slider::-webkit-slider-thumb:active {
-      cursor: grabbing;
-      transform: scale(1.15);
-    }
-    .deepblue-tone-slider::-moz-range-track {
-      height: 4px;
-      border-radius: 999px;
-      background: #e9ecf0;
-    }
-    .deepblue-tone-slider::-moz-range-progress {
-      height: 4px;
-      border-radius: 999px;
-      background: #3964fe;
-    }
-    .deepblue-tone-slider::-moz-range-thumb {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #3964fe;
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.28);
-      cursor: grab;
-    }
-    `;
-    document.head.appendChild(style);
-  },
+  //
+  // A single row: a small "Tone" label (so its purpose is obvious at a
+  // glance) separated by a thin divider from a horizontally-scrollable
+  // strip of pills - Off, each preset, then any custom tones, then a
+  // dashed "+" to add another. Exactly one pill is ever visually "active"
+  // (solid blue fill) so the current selection is unambiguous. Everything
+  // lives in this one row, however many custom tones get added - the pill
+  // strip scrolls sideways instead of wrapping to a second line.
 
   _build() {
     const row = document.createElement('div');
     row.id = CONFIG.ids.toneRow;
     row.style.cssText = `
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     box-sizing: border-box;
-    padding: 10px 14px 18px;
+    padding: 8px 14px 12px;
     margin-top: 2px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     `;
 
-    // Icon width is reused below to indent the slider so it lines up
-    // directly under the labels row (rather than under the icon too).
-    const ICON_COL_WIDTH = 16; // 14px icon + gap rounding
-
-    // -- Row 1: the tone icon + one label per stop, spread edge to edge so
-    // each name sits roughly above where the slider lands on that stop.
-    const labelsLine = document.createElement('div');
-    labelsLine.style.cssText = 'display: flex; align-items: center; gap: 6px;';
-
-    const icon = document.createElement('div');
-    icon.title = 'Tone of DeepSeek\u2019s response - appended as a visible tag on your message';
-    icon.style.cssText = `display:flex; align-items:center; justify-content:center; color:#8e8e93; flex-shrink:0; width:${ICON_COL_WIDTH}px;`;
-    icon.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    // -- Leading label: what this row even is, at a glance. Stays put
+    // (doesn't scroll away) even if the pill strip grows long.
+    const lead = document.createElement('div');
+    lead.title = 'Tone of DeepSeek\u2019s response - appended as a short, visible tag on your message';
+    lead.style.cssText = 'display:flex; align-items:center; gap:5px; flex-shrink:0; cursor:default;';
+    lead.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#8e8e93;">
     <path d="M12 3L14.2 9.3L20.5 11.5L14.2 13.7L12 20L9.8 13.7L3.5 11.5L9.8 9.3L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
     </svg>
+    <span style="font-size:11px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; color:#8e8e93; white-space:nowrap;">Tone</span>
     `;
-    labelsLine.appendChild(icon);
+    row.appendChild(lead);
 
-    const labelsFlex = document.createElement('div');
-    labelsFlex.style.cssText = `
-    position: relative;
+    const divider = document.createElement('div');
+    divider.style.cssText = 'width:1px; height:16px; background:#e5e7eb; flex-shrink:0;';
+    row.appendChild(divider);
+
+    // -- Scrollable pill strip.
+    const strip = document.createElement('div');
+    strip.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 6px;
     flex: 1 1 auto;
     min-width: 0;
-    height: 18px;
-    padding: 0 7px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
     `;
-    labelsLine.appendChild(labelsFlex);
-    row.appendChild(labelsLine);
-    this._labelsFlex = labelsFlex;
+    row.appendChild(strip);
+    this._strip = strip;
 
     const addBtn = document.createElement('button');
     addBtn.id = CONFIG.ids.toneAddBtn;
+    addBtn.type = 'button';
     addBtn.title = 'Add a custom tone';
     addBtn.style.cssText = `
     display: flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
-    background: none; border: 1px dashed #c9ccd3; cursor: pointer; color: #8e8e93;
-    padding: 0; margin-left: 8px; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: none; border: 1.5px dashed #c9ccd3; cursor: pointer; color: #8e8e93;
+    padding: 0; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     `;
     addBtn.innerHTML = `
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
     </svg>
     `;
@@ -347,243 +292,108 @@ const ToneSelector = {
     });
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this._showAddInput(labelsLine, addBtn);
+      this._showAddInput(addBtn);
     });
-    labelsLine.appendChild(addBtn);
     this._addBtn = addBtn;
 
-    // -- Row 2: the slider, indented by the same amount as the icon column
-    // so its 0%/100% ends line up with the first/last labels above it.
-    const sliderLine = document.createElement('div');
-    sliderLine.style.cssText = 'display: flex; align-items: center; gap: 6px;';
-
-    const spacer = document.createElement('div');
-    spacer.style.cssText = `flex-shrink: 0; width: ${ICON_COL_WIDTH}px;`;
-    sliderLine.appendChild(spacer);
-
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.className = 'deepblue-tone-slider';
-    slider.step = '1';
-    slider.style.cssText = 'flex: 1 1 auto; min-width: 0; touch-action: none;';
-    slider.addEventListener('input', () => {
-      const tone = this._allTones()[Number(slider.value)];
-      if (tone) this._select(tone.id);
-    });
-    this._wireManualDrag(slider);
-    sliderLine.appendChild(slider);
-    row.appendChild(sliderLine);
-    this._slider = slider;
-
     this._row = row;
-    this._rebuildSlider();
-    window.addEventListener('resize', () => this._positionThumbLabel());
+    this._rebuildPills();
     return row;
   },
 
-  // Rebuilds the label strip and the slider's range (min/max/value) to
-  // match the current tone list - called on first build and whenever a
-  // custom tone is added or removed (which changes how many stops exist).
-  // Drives the slider from pointer events directly instead of relying on
-  // the browser's native mouse-drag-a-range-thumb behavior. DeepSeek's
-  // composer area has its own listeners for things like focus handling and
-  // selection prevention; if any of those run first and call
-  // preventDefault()/stopPropagation() on mousedown, a native range input
-  // can end up completely unable to be dragged even though it still
-  // responds to clicks/keyboard. Capturing pointerdown ourselves (capture
-  // phase, with stopPropagation) guarantees we see the gesture before any
-  // such handler can swallow it, and setPointerCapture keeps the drag
-  // tracking correctly even if the cursor moves outside the thin track.
-  _wireManualDrag(slider) {
-    const setFromClientX = (clientX) => {
-      const rect = slider.getBoundingClientRect();
-      if (!rect.width) return;
-      const min = Number(slider.min) || 0;
-      const max = Number(slider.max) || 1;
-      const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      const stepped = String(Math.round(min + fraction * (max - min)));
-      if (stepped !== slider.value) {
-        slider.value = stepped;
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    };
-
-    slider.addEventListener(
-      'pointerdown',
-      (e) => {
-        e.stopPropagation();
-        try {
-          slider.setPointerCapture(e.pointerId);
-        } catch (_) {
-          /* ignore - unsupported or already captured */
-        }
-        setFromClientX(e.clientX);
-      },
-      true
-    );
-
-    slider.addEventListener('pointermove', (e) => {
-      if (e.buttons !== 1) return;
-      e.stopPropagation();
-      setFromClientX(e.clientX);
-    });
-
-    slider.addEventListener('pointerup', (e) => {
-      try {
-        slider.releasePointerCapture(e.pointerId);
-      } catch (_) {
-        /* ignore */
-      }
-    });
-  },
-
-  _rebuildSlider() {
-    const slider = this._slider;
-    const labelsFlex = this._labelsFlex;
-    if (!slider || !labelsFlex) return;
+  _rebuildPills() {
+    const strip = this._strip;
+    if (!strip) return;
 
     const tones = this._allTones();
     const state = this._getState();
-    const index = Math.max(
-      0,
-      tones.findIndex((t) => t.id === state.selectedId)
-    );
 
-    slider.min = '0';
-    slider.max = String(tones.length - 1);
-    slider.value = String(index);
-
-    labelsFlex.innerHTML = '';
-    tones.forEach((tone, i) => {
-      labelsFlex.appendChild(this._buildLabelItem(tone, i, tones.length, index));
+    strip.innerHTML = '';
+    tones.forEach((tone) => {
+      strip.appendChild(this._buildPill(tone, tone.id === state.selectedId));
     });
-
-    this._positionThumbLabel();
+    strip.appendChild(this._addBtn);
   },
 
-  // Absolutely positioned at the same percent-of-track the slider uses
-  // (see _positionThumbLabel), rather than laid out with flex
-  // space-between - space-between only pins the FIRST/LAST label's edges
-  // to the container edges, so every label's actual center (which depends
-  // on its own text width) drifts away from where the thumb lands,
-  // especially once custom tones with longer names are added. Percent-based
-  // absolute placement keeps every label's center matched to its stop.
-  _buildLabelItem(tone, i, total, selectedIndex) {
+  _buildPill(tone, isSelected) {
     const isCustom = !CONFIG.tone.presets.some((p) => p.id === tone.id);
-    const isSelected = i === selectedIndex;
-    const percent = total > 1 ? (i / (total - 1)) * 100 : 0;
 
-    // First/last labels hug the track's ends outward instead of centering
-    // (which would push them half off the edge and get clipped).
-    let transform = 'translate(-50%, -50%)';
-    let leftStyle = `${percent}%`;
-    if (i === 0) {
-      transform = 'translateY(-50%)';
-      leftStyle = '0';
-    } else if (i === total - 1) {
-      transform = 'translate(-100%, -50%)';
-    }
-
-    const item = document.createElement('div');
-    item.className = 'deepblue-tone-label-item';
-    item.dataset.toneId = tone.id;
-    item.dataset.index = String(i);
-    item.style.cssText = `
-    position: absolute;
-    top: 50%;
-    left: ${leftStyle};
-    transform: ${transform};
-    font-size: 12px;
-    font-weight: ${isSelected ? '700' : '500'};
-    color: ${isSelected ? '#3964fe' : '#8e8e93'};
+    const pill = document.createElement('div');
+    pill.className = 'deepblue-tone-pill';
+    pill.dataset.toneId = tone.id;
+    pill.style.cssText = `
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
     white-space: nowrap;
-    user-select: none;
     cursor: pointer;
-    transition: color 0.15s ease;
+    user-select: none;
+    border: 1.5px solid ${isSelected ? '#3964fe' : '#e9ecf0'};
+    background: ${isSelected ? '#3964fe' : '#f5f6f8'};
+    color: ${isSelected ? '#ffffff' : '#6c6c72'};
+    box-shadow: ${isSelected ? '0 1px 4px rgba(57,100,254,0.35)' : 'none'};
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     `;
-    item.textContent = tone.id === 'none' ? 'Off' : tone.emoji ? `${tone.label} ${tone.emoji}` : tone.label;
-    item.title =
-      tone.id === 'none' ? 'Click to turn tone tagging off' : `Click to select \u2013 appends "${this._tagText(tone)}" to your message`;
+    pill.textContent = tone.id === 'none' ? 'Off' : tone.emoji ? `${tone.label} ${tone.emoji}` : tone.label;
+    pill.title =
+      tone.id === 'none'
+        ? 'No tone tag - DeepSeek responds normally'
+        : `Click to select \u2013 appends "${this._tagText(tone)}" to your message`;
 
-    item.addEventListener('click', () => {
-      const slider = this._slider;
-      if (slider) {
-        slider.value = String(i);
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-        this._select(tone.id);
-      }
+    pill.addEventListener('mouseenter', () => {
+      if (pill.dataset.toneId === this._getState().selectedId) return;
+      pill.style.background = '#eef1ff';
+      pill.style.color = '#3964fe';
+      pill.style.borderColor = '#c7d2fe';
     });
+    pill.addEventListener('mouseleave', () => {
+      if (pill.dataset.toneId === this._getState().selectedId) return;
+      pill.style.background = '#f5f6f8';
+      pill.style.color = '#6c6c72';
+      pill.style.borderColor = '#e9ecf0';
+    });
+    pill.addEventListener('click', () => this._select(tone.id));
 
     if (isCustom) {
       const remove = document.createElement('span');
       remove.textContent = '\u00d7';
       remove.title = 'Remove this tone';
+      const baseRemoveBg = isSelected ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.08)';
       remove.style.cssText = `
       display: inline-flex; align-items: center; justify-content: center;
-      width: 13px; height: 13px; margin-left: 3px; border-radius: 50%;
-      background: #e4e7ed; color: #8e8e93; font-size: 10px; font-weight: 700;
-      opacity: 0; transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+      width: 14px; height: 14px; margin-left: 5px; border-radius: 50%;
+      background: ${baseRemoveBg}; color: inherit; font-size: 11px; font-weight: 700;
+      transition: background 0.15s ease;
       `;
-      remove.addEventListener('mouseenter', () => {
+      remove.addEventListener('mouseenter', (e) => {
+        e.stopPropagation();
         remove.style.background = '#ef4444';
-        remove.style.color = '#ffffff';
       });
-      remove.addEventListener('mouseleave', () => {
-        remove.style.background = '#e4e7ed';
-        remove.style.color = '#8e8e93';
+      remove.addEventListener('mouseleave', (e) => {
+        e.stopPropagation();
+        remove.style.background = baseRemoveBg;
       });
       remove.addEventListener('click', (e) => {
-        // Stops the label's own click (select-this-tone) from also firing.
+        // Stops the pill's own click (select-this-tone) from also firing.
         e.stopPropagation();
         this._removeCustomTone(tone.id);
       });
-      item.addEventListener('mouseenter', () => (remove.style.opacity = '1'));
-      item.addEventListener('mouseleave', () => (remove.style.opacity = '0'));
-      item.appendChild(remove);
+      pill.appendChild(remove);
     }
 
-    return item;
-  },
-
-  // Recomputed on every selection change and on window resize: fills the
-  // track up to the thumb (via a CSS var read by the injected stylesheet)
-  // and re-highlights the matching label above it.
-  _positionThumbLabel() {
-    const slider = this._slider;
-    if (!slider) return;
-
-    const min = Number(slider.min) || 0;
-    const max = Number(slider.max) || 1;
-    const value = Number(slider.value) || 0;
-    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
-
-    slider.style.setProperty(
-      '--deepblue-tone-fill',
-      `linear-gradient(to right, #3964fe ${percent}%, #e9ecf0 ${percent}%)`
-    );
-
-    if (this._labelsFlex) {
-      Array.from(this._labelsFlex.children).forEach((item, i) => {
-        const isSelected = i === value;
-        item.style.color = isSelected ? '#3964fe' : '#8e8e93';
-        item.style.fontWeight = isSelected ? '700' : '500';
-      });
-    }
+    return pill;
   },
 
   _syncSelectionUI() {
-    const tones = this._allTones();
-    const state = this._getState();
-    const index = Math.max(
-      0,
-      tones.findIndex((t) => t.id === state.selectedId)
-    );
-    if (this._slider) this._slider.value = String(index);
-    this._positionThumbLabel();
+    if (this._strip) this._rebuildPills();
   },
 
-  _showAddInput(labelsLine, addBtn) {
+  _showAddInput(addBtn) {
     if (this._addingCustom) return;
     this._addingCustom = true;
 
@@ -592,18 +402,17 @@ const ToneSelector = {
     input.placeholder = 'e.g. sarcastic';
     input.maxLength = 24;
     input.style.cssText = `
-    width: 100px;
-    font-size: 12px;
+    width: 110px;
+    font-size: 12.5px;
     font-family: inherit;
-    border: 1px solid #3964fe;
+    border: 1.5px solid #3964fe;
     border-radius: 999px;
-    padding: 3px 10px;
+    padding: 5px 12px;
     outline: none;
     flex-shrink: 0;
-    margin-left: 8px;
     `;
 
-    labelsLine.insertBefore(input, addBtn);
+    addBtn.insertAdjacentElement('beforebegin', input);
     addBtn.style.display = 'none';
     input.focus();
 
@@ -626,7 +435,7 @@ const ToneSelector = {
       settled = true;
       const tone = this._addCustomTone(input.value);
       cleanup();
-      if (tone) this._rebuildSlider();
+      if (tone) this._rebuildPills();
     };
 
     const cancel = () => {
