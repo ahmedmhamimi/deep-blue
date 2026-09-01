@@ -1,8 +1,8 @@
-// features/tone-selector.js - a segmented "tone" slider injected above the
-// composer toolbar (char counter / export / send row). Lets the user pick a
-// response tone (or add their own), which gets appended as a short, ALWAYS
-// VISIBLE tag on the last line of their outgoing message - e.g.
-// "Tone: Fun 🎉" - right before it's sent.
+// features/tone-selector.js - a draggable "tone" slider injected below the
+// composer's bottom toolbar (char counter / export / send row). Lets the
+// user pick a response tone (or add their own), which gets appended as a
+// short, ALWAYS VISIBLE tag on the last line of their outgoing message -
+// e.g. "Tone: Fun 🎉" - right before it's sent.
 //
 // Deliberately never hidden or stripped from the rendered message: what you
 // see in the chat log, in exports, and in the actual request DeepSeek
@@ -28,19 +28,31 @@ const ToneSelector = {
 
   ensureInjected() {
     if (document.getElementById(CONFIG.ids.toneRow)) {
-      this._positionHighlight();
+      this._positionThumbLabel();
       return;
     }
 
     const sendWrapper = DOM.findSendButtonWrapper();
     const toolbar = sendWrapper?.parentNode;
-    if (!toolbar || !toolbar.parentNode) return;
+    // `toolbar` (char count / attach / export / send) and the DeepThink /
+    // Search mode-toggle row are actually two children of the SAME single
+    // flex line (laid out side by side, one on each edge) - not two
+    // stacked rows as they visually appear. Inserting our row as a third
+    // child of that flex line just added it to the same line, off to the
+    // right. Climbing one level further up gets us to the container that
+    // stacks the textarea above that whole toolbar line, which is where a
+    // genuinely new row belongs.
+    const toolbarLine = toolbar?.parentNode;
+    const composerBody = toolbarLine?.parentNode;
+    if (!toolbarLine || !composerBody) return;
+
+    this._injectSliderStyles();
 
     const row = this._build();
-    toolbar.parentNode.insertBefore(row, toolbar);
+    composerBody.insertBefore(row, toolbarLine.nextSibling);
     this._wireSendInterception();
 
-    nextFrame().then(() => this._positionHighlight());
+    nextFrame().then(() => this._positionThumbLabel());
   },
 
   // -- persistence -------------------------------------------------------
@@ -88,7 +100,7 @@ const ToneSelector = {
     state.customTones = state.customTones.filter((t) => t.id !== id);
     if (state.selectedId === id) state.selectedId = 'none';
     this._saveState(state);
-    this._rebuildTrack();
+    this._rebuildSlider();
   },
 
   // -- the tag itself ------------------------------------------------------
@@ -146,58 +158,124 @@ const ToneSelector = {
 
   // -- UI ------------------------------------------------------------------
 
+  _injectSliderStyles() {
+    if (document.getElementById('deepblue-tone-slider-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'deepblue-tone-slider-styles';
+    style.textContent = `
+    .deepblue-tone-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--deepblue-tone-fill, #e9ecf0);
+      cursor: pointer;
+      margin: 0;
+      outline: none;
+    }
+    .deepblue-tone-slider::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 999px;
+      background: transparent;
+    }
+    .deepblue-tone-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #3964fe;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+      margin-top: -5.5px;
+      cursor: grab;
+      transition: transform 0.12s ease;
+    }
+    .deepblue-tone-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.15);
+    }
+    .deepblue-tone-slider::-moz-range-track {
+      height: 4px;
+      border-radius: 999px;
+      background: #e9ecf0;
+    }
+    .deepblue-tone-slider::-moz-range-progress {
+      height: 4px;
+      border-radius: 999px;
+      background: #3964fe;
+    }
+    .deepblue-tone-slider::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #3964fe;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+      cursor: grab;
+    }
+    `;
+    document.head.appendChild(style);
+  },
+
   _build() {
     const row = document.createElement('div');
     row.id = CONFIG.ids.toneRow;
     row.style.cssText = `
     display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 2px 8px;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px 18px;
+    margin-top: 2px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     `;
 
+    // Icon width is reused below to indent the slider so it lines up
+    // directly under the labels row (rather than under the icon too).
+    const ICON_COL_WIDTH = 16; // 14px icon + gap rounding
+
+    // -- Row 1: the tone icon + one label per stop, spread edge to edge so
+    // each name sits roughly above where the slider lands on that stop.
+    const labelsLine = document.createElement('div');
+    labelsLine.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+
     const icon = document.createElement('div');
     icon.title = 'Tone of DeepSeek\u2019s response - appended as a visible tag on your message';
-    icon.style.cssText =
-      'display:flex; align-items:center; justify-content:center; color:#8e8e93; flex-shrink:0;';
+    icon.style.cssText = `display:flex; align-items:center; justify-content:center; color:#8e8e93; flex-shrink:0; width:${ICON_COL_WIDTH}px;`;
     icon.innerHTML = `
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 3L14.2 9.3L20.5 11.5L14.2 13.7L12 20L9.8 13.7L3.5 11.5L9.8 9.3L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
     </svg>
     `;
-    row.appendChild(icon);
+    labelsLine.appendChild(icon);
 
-    const track = document.createElement('div');
-    track.id = CONFIG.ids.toneTrack;
-    track.style.cssText = `
-    position: relative;
-    display: inline-flex;
+    const labelsFlex = document.createElement('div');
+    labelsFlex.style.cssText = `
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 2px;
-    background: #f5f6f8;
-    border: 1px solid #e9ecf0;
-    border-radius: 999px;
-    padding: 3px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    max-width: 100%;
-    scrollbar-width: none;
+    min-width: 0;
+    padding: 0 7px;
     `;
-    row.appendChild(track);
-    this._track = track;
+    labelsLine.appendChild(labelsFlex);
+    row.appendChild(labelsLine);
+    this._labelsFlex = labelsFlex;
 
     const addBtn = document.createElement('button');
     addBtn.id = CONFIG.ids.toneAddBtn;
     addBtn.title = 'Add a custom tone';
     addBtn.style.cssText = `
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
     background: none; border: 1px dashed #c9ccd3; cursor: pointer; color: #8e8e93;
-    padding: 0; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    padding: 0; margin-left: 8px; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     `;
     addBtn.innerHTML = `
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
     </svg>
     `;
@@ -213,124 +291,208 @@ const ToneSelector = {
     });
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this._showAddInput(row, addBtn);
+      this._showAddInput(labelsLine, addBtn);
     });
-    row.appendChild(addBtn);
+    labelsLine.appendChild(addBtn);
     this._addBtn = addBtn;
 
+    // -- Row 2: the slider, indented by the same amount as the icon column
+    // so its 0%/100% ends line up with the first/last labels above it.
+    const sliderLine = document.createElement('div');
+    sliderLine.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+
+    const spacer = document.createElement('div');
+    spacer.style.cssText = `flex-shrink: 0; width: ${ICON_COL_WIDTH}px;`;
+    sliderLine.appendChild(spacer);
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'deepblue-tone-slider';
+    slider.step = '1';
+    slider.style.cssText = 'flex: 1 1 auto; min-width: 0; touch-action: none;';
+    slider.addEventListener('input', () => {
+      const tone = this._allTones()[Number(slider.value)];
+      if (tone) this._select(tone.id);
+    });
+    this._wireManualDrag(slider);
+    sliderLine.appendChild(slider);
+    row.appendChild(sliderLine);
+    this._slider = slider;
+
     this._row = row;
-    this._rebuildTrack();
-    window.addEventListener('resize', () => this._positionHighlight());
+    this._rebuildSlider();
+    window.addEventListener('resize', () => this._positionThumbLabel());
     return row;
   },
 
-  _rebuildTrack() {
-    const track = this._track || document.getElementById(CONFIG.ids.toneTrack);
-    if (!track) return;
-    track.innerHTML = '';
+  // Rebuilds the label strip and the slider's range (min/max/value) to
+  // match the current tone list - called on first build and whenever a
+  // custom tone is added or removed (which changes how many stops exist).
+  // Drives the slider from pointer events directly instead of relying on
+  // the browser's native mouse-drag-a-range-thumb behavior. DeepSeek's
+  // composer area has its own listeners for things like focus handling and
+  // selection prevention; if any of those run first and call
+  // preventDefault()/stopPropagation() on mousedown, a native range input
+  // can end up completely unable to be dragged even though it still
+  // responds to clicks/keyboard. Capturing pointerdown ourselves (capture
+  // phase, with stopPropagation) guarantees we see the gesture before any
+  // such handler can swallow it, and setPointerCapture keeps the drag
+  // tracking correctly even if the cursor moves outside the thin track.
+  _wireManualDrag(slider) {
+    const setFromClientX = (clientX) => {
+      const rect = slider.getBoundingClientRect();
+      if (!rect.width) return;
+      const min = Number(slider.min) || 0;
+      const max = Number(slider.max) || 1;
+      const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const stepped = String(Math.round(min + fraction * (max - min)));
+      if (stepped !== slider.value) {
+        slider.value = stepped;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    };
 
-    const highlight = document.createElement('div');
-    highlight.id = CONFIG.ids.toneHighlight;
-    highlight.style.cssText = `
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    height: calc(100% - 6px);
-    width: 0;
-    background: #ffffff;
-    border-radius: 999px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.10);
-    transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 0;
-    `;
-    track.appendChild(highlight);
-    this._highlight = highlight;
+    slider.addEventListener(
+      'pointerdown',
+      (e) => {
+        e.stopPropagation();
+        try {
+          slider.setPointerCapture(e.pointerId);
+        } catch (_) {
+          /* ignore - unsupported or already captured */
+        }
+        setFromClientX(e.clientX);
+      },
+      true
+    );
 
-    const state = this._getState();
-    this._allTones().forEach((tone) => {
-      track.appendChild(this._buildSegment(tone, state.selectedId === tone.id));
+    slider.addEventListener('pointermove', (e) => {
+      if (e.buttons !== 1) return;
+      e.stopPropagation();
+      setFromClientX(e.clientX);
     });
 
-    nextFrame().then(() => this._positionHighlight());
+    slider.addEventListener('pointerup', (e) => {
+      try {
+        slider.releasePointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+    });
   },
 
-  _buildSegment(tone, isSelected) {
-    const isCustom = !CONFIG.tone.presets.some((p) => p.id === tone.id);
+  _rebuildSlider() {
+    const slider = this._slider;
+    const labelsFlex = this._labelsFlex;
+    if (!slider || !labelsFlex) return;
 
-    const seg = document.createElement('div');
-    seg.className = 'deepblue-tone-segment';
-    seg.dataset.toneId = tone.id;
-    seg.style.cssText = `
+    const tones = this._allTones();
+    const state = this._getState();
+    const index = Math.max(
+      0,
+      tones.findIndex((t) => t.id === state.selectedId)
+    );
+
+    slider.min = '0';
+    slider.max = String(tones.length - 1);
+    slider.value = String(index);
+
+    labelsFlex.innerHTML = '';
+    tones.forEach((tone, i) => {
+      labelsFlex.appendChild(this._buildLabelItem(tone, i, index));
+    });
+
+    this._positionThumbLabel();
+  },
+
+  _buildLabelItem(tone, i, selectedIndex) {
+    const isCustom = !CONFIG.tone.presets.some((p) => p.id === tone.id);
+    const isSelected = i === selectedIndex;
+
+    const item = document.createElement('div');
+    item.className = 'deepblue-tone-label-item';
+    item.dataset.toneId = tone.id;
+    item.dataset.index = String(i);
+    item.style.cssText = `
     position: relative;
-    z-index: 1;
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: ${isSelected ? '700' : '500'};
+    color: ${isSelected ? '#3964fe' : '#8e8e93'};
     white-space: nowrap;
-    cursor: pointer;
     user-select: none;
-    color: ${isSelected ? '#3964fe' : '#6c6c72'};
     transition: color 0.15s ease;
     `;
-    seg.textContent = tone.emoji ? `${tone.label} ${tone.emoji}` : tone.label;
-    seg.title = tone.id === 'none' ? 'No tone tag added' : `Appends "${this._tagText(tone)}" to your message`;
-
-    seg.addEventListener('mouseenter', () => {
-      if (seg.dataset.toneId !== this._getState().selectedId) seg.style.color = '#1d1d1f';
-    });
-    seg.addEventListener('mouseleave', () => {
-      if (seg.dataset.toneId !== this._getState().selectedId) seg.style.color = '#6c6c72';
-    });
-    seg.addEventListener('click', () => this._select(tone.id));
+    item.textContent = tone.id === 'none' ? 'Off' : tone.emoji ? `${tone.label} ${tone.emoji}` : tone.label;
+    item.title = tone.id === 'none' ? 'No tone tag added' : `Appends "${this._tagText(tone)}" to your message`;
 
     if (isCustom) {
       const remove = document.createElement('span');
       remove.textContent = '\u00d7';
       remove.title = 'Remove this tone';
       remove.style.cssText = `
-      position: absolute; top: -5px; right: -4px; width: 15px; height: 15px;
-      border-radius: 50%; background: #c9ccd3; color: #ffffff; font-size: 11px; font-weight: 700;
-      line-height: 15px; text-align: center; opacity: 0; transition: opacity 0.15s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 13px; height: 13px; margin-left: 3px; border-radius: 50%;
+      background: #e4e7ed; color: #8e8e93; font-size: 10px; font-weight: 700;
+      opacity: 0; transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
       `;
-      remove.addEventListener('mouseenter', () => (remove.style.background = '#ef4444'));
-      remove.addEventListener('mouseleave', () => (remove.style.background = '#c9ccd3'));
+      remove.addEventListener('mouseenter', () => {
+        remove.style.background = '#ef4444';
+        remove.style.color = '#ffffff';
+      });
+      remove.addEventListener('mouseleave', () => {
+        remove.style.background = '#e4e7ed';
+        remove.style.color = '#8e8e93';
+      });
       remove.addEventListener('click', (e) => {
         e.stopPropagation();
         this._removeCustomTone(tone.id);
       });
-      seg.addEventListener('mouseenter', () => (remove.style.opacity = '1'));
-      seg.addEventListener('mouseleave', () => (remove.style.opacity = '0'));
-      seg.appendChild(remove);
+      item.addEventListener('mouseenter', () => (remove.style.opacity = '1'));
+      item.addEventListener('mouseleave', () => (remove.style.opacity = '0'));
+      item.appendChild(remove);
     }
 
-    return seg;
+    return item;
+  },
+
+  // Recomputed on every selection change and on window resize: fills the
+  // track up to the thumb (via a CSS var read by the injected stylesheet)
+  // and re-highlights the matching label above it.
+  _positionThumbLabel() {
+    const slider = this._slider;
+    if (!slider) return;
+
+    const min = Number(slider.min) || 0;
+    const max = Number(slider.max) || 1;
+    const value = Number(slider.value) || 0;
+    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+
+    slider.style.setProperty(
+      '--deepblue-tone-fill',
+      `linear-gradient(to right, #3964fe ${percent}%, #e9ecf0 ${percent}%)`
+    );
+
+    if (this._labelsFlex) {
+      Array.from(this._labelsFlex.children).forEach((item, i) => {
+        const isSelected = i === value;
+        item.style.color = isSelected ? '#3964fe' : '#8e8e93';
+        item.style.fontWeight = isSelected ? '700' : '500';
+      });
+    }
   },
 
   _syncSelectionUI() {
-    const track = this._track || document.getElementById(CONFIG.ids.toneTrack);
-    if (!track) return;
-    const selectedId = this._getState().selectedId;
-    track.querySelectorAll('.deepblue-tone-segment').forEach((seg) => {
-      seg.style.color = seg.dataset.toneId === selectedId ? '#3964fe' : '#6c6c72';
-    });
-    this._positionHighlight();
+    const tones = this._allTones();
+    const state = this._getState();
+    const index = Math.max(
+      0,
+      tones.findIndex((t) => t.id === state.selectedId)
+    );
+    if (this._slider) this._slider.value = String(index);
+    this._positionThumbLabel();
   },
 
-  _positionHighlight() {
-    const track = this._track || document.getElementById(CONFIG.ids.toneTrack);
-    const highlight = this._highlight || document.getElementById(CONFIG.ids.toneHighlight);
-    if (!track || !highlight) return;
-
-    const selectedId = this._getState().selectedId;
-    const seg = track.querySelector(`.deepblue-tone-segment[data-tone-id="${selectedId}"]`);
-    if (!seg) return;
-
-    highlight.style.left = `${seg.offsetLeft}px`;
-    highlight.style.width = `${seg.offsetWidth}px`;
-  },
-
-  _showAddInput(row, addBtn) {
+  _showAddInput(labelsLine, addBtn) {
     if (this._addingCustom) return;
     this._addingCustom = true;
 
@@ -339,17 +501,18 @@ const ToneSelector = {
     input.placeholder = 'e.g. sarcastic';
     input.maxLength = 24;
     input.style.cssText = `
-    width: 130px;
-    font-size: 12.5px;
+    width: 100px;
+    font-size: 12px;
     font-family: inherit;
     border: 1px solid #3964fe;
     border-radius: 999px;
-    padding: 5px 12px;
+    padding: 3px 10px;
     outline: none;
     flex-shrink: 0;
+    margin-left: 8px;
     `;
 
-    row.insertBefore(input, addBtn);
+    labelsLine.insertBefore(input, addBtn);
     addBtn.style.display = 'none';
     input.focus();
 
@@ -372,7 +535,7 @@ const ToneSelector = {
       settled = true;
       const tone = this._addCustomTone(input.value);
       cleanup();
-      if (tone) this._rebuildTrack();
+      if (tone) this._rebuildSlider();
     };
 
     const cancel = () => {

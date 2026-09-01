@@ -36,8 +36,6 @@ const CONFIG = {
     folderAddBtn: 'deepblue-folder-add-btn',
     folderMenu: 'deepblue-folder-menu',
     toneRow: 'deepblue-tone-row',
-    toneTrack: 'deepblue-tone-track',
-    toneHighlight: 'deepblue-tone-highlight',
     toneAddBtn: 'deepblue-tone-add-btn',
   },
   selectors: {
