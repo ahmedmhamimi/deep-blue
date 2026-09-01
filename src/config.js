@@ -56,6 +56,7 @@ const CONFIG = {
     messageActionRow: ['.ds-flex._0a3d93b', '._0a3d93b'],
     messageButtonRow: ['.ds-flex._965abe9'],
     shareButton: '.ds-button[title*="Share" i]',
+    headerActionButton: '.the-header .ds-button',
     primaryCircleButton: '.ds-button.ds-button--primary.ds-button--filled.ds-button--circle',
     fitContentWrapper: 'div[style*="width: fit-content"]',
     headerContainer: 'header, .ds-header, [class*="header"]',

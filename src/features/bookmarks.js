@@ -118,48 +118,53 @@ const Bookmarks = {
     const key = `${role}:${hashText(text)}`;
     message.dataset.deepblueBookmarkKey = key;
 
+    // Wrap the button + message in a positioning host so the button can be
+    // docked just outside the bubble's edge instead of overlaying its text.
+    const host = this._ensureHost(message, role);
+    const btn = this._buildToggleButton(convId, key, role, text);
+    host.appendChild(btn);
+
+    this._processed.add(message);
+  },
+
+  // Messages render as full-width rows (the bubble itself is only part of
+  // the row). We dock the button to the row, offset past the bubble on the
+  // outer edge, so it never sits on top of the text - just a floating
+  // marker beside the conversation, always clear of the content.
+  _ensureHost(message, role) {
     if (window.getComputedStyle(message).position === 'static') {
       message.style.position = 'relative';
     }
+    message.classList.add('deepblue-bookmark-host', `deepblue-bookmark-host--${role}`);
 
-    const btn = this._buildToggleButton(convId, key, role, text);
-    message.appendChild(btn);
+    // Belt-and-braces alongside the CSS ::after hover bridge: some hosts
+    // may clip overflow in ways that break the CSS-only hit area, so track
+    // hover in JS too and toggle a class that keeps the button visible.
+    // This also covers the moment the pointer is travelling from the
+    // bubble to the button - the button is still a descendant of `message`
+    // in the DOM, so entering it never fires `mouseleave` on the host.
+    if (!message.dataset.deepblueBookmarkHoverBound) {
+      message.dataset.deepblueBookmarkHoverBound = 'true';
+      message.addEventListener('mouseenter', () => message.classList.add('deepblue-bookmark-hover'));
+      message.addEventListener('mouseleave', () => message.classList.remove('deepblue-bookmark-hover'));
+    }
 
-    this._processed.add(message);
+    return message;
   },
 
   _buildToggleButton(convId, key, role, text) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'deepblue-bookmark-btn';
-    btn.style.cssText = `
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    background: rgba(255,255,255,0.9);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    `;
     this._paintButton(btn, this._isBookmarked(convId, key));
 
-    btn.addEventListener('mouseenter', () => (btn.style.opacity = '1'));
-    btn.addEventListener('mouseleave', () => {
-      if (btn.dataset.bookmarked !== 'true') btn.style.opacity = '0.35';
-    });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const nowBookmarked = btn.dataset.bookmarked !== 'true';
       if (nowBookmarked) {
         this._add(convId, { key, role, snippet: this._snippet(text), addedAt: Date.now() });
+        btn.classList.add('deepblue-bookmark-btn--pop');
+        setTimeout(() => btn.classList.remove('deepblue-bookmark-btn--pop'), 260);
       } else {
         this._remove(convId, key);
       }
@@ -173,11 +178,11 @@ const Bookmarks = {
 
   _paintButton(btn, bookmarked) {
     btn.dataset.bookmarked = bookmarked ? 'true' : 'false';
-    btn.style.opacity = bookmarked ? '1' : '0.35';
     btn.title = bookmarked ? 'Remove bookmark' : 'Bookmark this message';
+    btn.setAttribute('aria-label', btn.title);
     btn.innerHTML = bookmarked
-      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="#3964fe" xmlns="http://www.w3.org/2000/svg"><path d="M6 3a1 1 0 0 0-1 1v17l7-4.5 7 4.5V4a1 1 0 0 0-1-1H6z"/></svg>`
-      : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6c6c72" stroke-width="1.8" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M6 3a1 1 0 0 0-1 1v17l7-4.5 7 4.5V4a1 1 0 0 0-1-1H6z"/></svg>`;
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg"><path d="M6 3a1 1 0 0 0-1 1v17l7-4.5 7 4.5V4a1 1 0 0 0-1-1H6z"/></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M6 3a1 1 0 0 0-1 1v17l7-4.5 7 4.5V4a1 1 0 0 0-1-1H6z"/></svg>`;
   },
 
   // -- syncing any currently-mounted message's icon after a panel action ----
@@ -191,9 +196,13 @@ const Bookmarks = {
   // -- fixed launcher + panel ------------------------------------------------
 
   _ensureLauncher() {
-    if (document.getElementById(CONFIG.ids.bookmarkLauncher)) return;
+    if (document.getElementById(CONFIG.ids.bookmarkLauncher)) {
+      this._repositionLauncher();
+      return;
+    }
     this._injectStyles();
     document.body.appendChild(this._buildLauncher());
+    this._watchLauncherPosition();
   },
 
   _injectStyles() {
@@ -206,8 +215,235 @@ const Bookmarks = {
       70% { box-shadow: 0 0 0 10px rgba(57,100,254,0); }
       100% { box-shadow: 0 0 0 0 rgba(57,100,254,0); }
     }
+
+    @keyframes deepblue-bookmark-pop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+
+    /* Docked marker, sits just outside the message row rather than on top
+       of its text. Hidden by default, revealed on hover - except once a
+       message is bookmarked, where it stays visible as a permanent marker.
+
+       The button renders outside the host's own box (right: -34px), so a
+       plain ":hover on host -> show button" rule has a dead gap: the
+       moment the cursor leaves the host's box on its way to the button,
+       the hover ends and the button disappears before it can be clicked.
+       To fix that we extend the host's actual hoverable hit area with an
+       invisible ::after strip that spans the gap plus the button itself,
+       so the whole path from bubble to button stays continuously hovered. */
+    .deepblue-bookmark-host {
+      --deepblue-bookmark-offset: -34px;
+    }
+
+    .deepblue-bookmark-host::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: var(--deepblue-bookmark-offset);
+      width: 40px;
+      height: 100%;
+      min-height: 40px;
+    }
+
+    .deepblue-bookmark-btn {
+      position: absolute;
+      top: 2px;
+      right: var(--deepblue-bookmark-offset);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid #e5e7eb;
+      cursor: pointer;
+      padding: 0;
+      background: #ffffff;
+      color: #9ca3af;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease,
+        border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+      pointer-events: none;
+    }
+
+    .deepblue-bookmark-host:hover .deepblue-bookmark-btn,
+    .deepblue-bookmark-host.deepblue-bookmark-hover .deepblue-bookmark-btn,
+    .deepblue-bookmark-host:focus-within .deepblue-bookmark-btn,
+    .deepblue-bookmark-btn:focus-visible {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .deepblue-bookmark-btn:hover {
+      border-color: #3964fe;
+      color: #3964fe;
+      box-shadow: 0 3px 10px rgba(57,100,254,0.22);
+      transform: scale(1.08);
+    }
+
+    .deepblue-bookmark-btn[data-bookmarked="true"] {
+      opacity: 1;
+      pointer-events: auto;
+      background: #3964fe;
+      border-color: #3964fe;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(57,100,254,0.35);
+    }
+
+    .deepblue-bookmark-btn[data-bookmarked="true"]:hover {
+      background: #2c4fd6;
+      border-color: #2c4fd6;
+      box-shadow: 0 3px 12px rgba(57,100,254,0.4);
+    }
+
+    .deepblue-bookmark-btn--pop {
+      animation: deepblue-bookmark-pop 0.26s ease;
+    }
+
+    /* Narrow viewports: no room to dock outside the bubble, so fall back to
+       a corner overlay, but with a solid background and clear contrast
+       instead of a translucent icon sitting on top of the text. */
+    @media (max-width: 860px) {
+      .deepblue-bookmark-btn {
+        top: 6px;
+        right: 6px;
+      }
+    }
     `;
     document.head.appendChild(style);
+  },
+
+  // Nuclear option: stop trying to identify "the Share button" by
+  // selector entirely - DeepSeek's markup has proven unreliable (no
+  // title, duplicate zero-size ghost nodes, selectors that silently stop
+  // matching after a redesign). Instead, do real collision detection:
+  // place the launcher at its default spot, then ask the browser what is
+  // ACTUALLY painted under its four corners (elementFromPoint only ever
+  // returns real, visible, hit-testable elements - ghost/hidden nodes
+  // can't produce a false positive here). If anything but our own
+  // launcher/its children is there, treat it as an obstacle, measure it,
+  // and step left until clear. This works regardless of what DeepSeek's
+  // header contains or how it's classed, today or after any future
+  // redesign.
+  _FALLBACK_LAUNCHER_TOP: 14,
+  _FALLBACK_LAUNCHER_RIGHT: 14,
+
+  _elementsUnderLauncher(wrap, top, right) {
+    const left = window.innerWidth - right - wrap.offsetWidth;
+    const size = wrap.offsetWidth;
+    const probes = [
+      [left + 2, top + 2],
+      [left + size - 2, top + 2],
+      [left + 2, top + size - 2],
+      [left + size - 2, top + size - 2],
+      [left + size / 2, top + size / 2],
+    ];
+
+    const found = new Set();
+    probes.forEach(([x, y]) => {
+      document.elementsFromPoint(x, y).forEach((el) => {
+        if (el === wrap || wrap.contains(el)) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        // Only treat genuinely small, button-sized things as obstacles.
+        // Large layout containers (the message list, page background,
+        // content column, header bar itself) are exactly what sits
+        // *behind* real buttons at every probe point via elementsFromPoint
+        // (it returns the whole stack, not just the topmost element), and
+        // treating THEIR width as the thing to dodge is what pushed the
+        // launcher off-screen: a wide container's right edge can be
+        // almost the full viewport width, so "step past its edge" means
+        // stepping thousands of pixels left. Real header buttons/icons
+        // are small - cap both dimensions generously above icon-button
+        // size and reject anything bigger.
+        if (rect.width > 120 || rect.height > 120) return;
+        found.add(el);
+      });
+    });
+    return Array.from(found);
+  },
+
+  _repositionLauncher() {
+    const wrap = document.getElementById(CONFIG.ids.bookmarkLauncher);
+    if (!wrap) return;
+
+    const gap = 10;
+    let top = this._FALLBACK_LAUNCHER_TOP;
+    let right = this._FALLBACK_LAUNCHER_RIGHT;
+    wrap.style.top = `${top}px`;
+    wrap.style.right = `${right}px`;
+
+    // Only bother avoiding things near the top of the page (the header
+    // band) - never let this logic go chasing something further down.
+    if (top > 100) return;
+
+    const maxSteps = 20;
+    for (let i = 0; i < maxSteps; i++) {
+      const obstacles = this._elementsUnderLauncher(wrap, top, right);
+      if (!obstacles.length) return;
+
+      // Push right (== move further left on screen) past the widest
+      // obstacle actually overlapping us, so one step clears it fully
+      // instead of nudging pixel by pixel into more collisions.
+      const widestRightEdge = obstacles.reduce((maxRight, el) => {
+        const r = el.getBoundingClientRect();
+        return Math.max(maxRight, window.innerWidth - r.left);
+      }, 0);
+
+      const nextRight = widestRightEdge + gap;
+      if (nextRight <= right) {
+        // Safety net against an infinite loop if something reports a
+        // rect that doesn't actually move us forward.
+        right += 40;
+      } else {
+        right = nextRight;
+      }
+
+      // Hard ceiling: never let the launcher be pushed far enough that it
+      // leaves the viewport, no matter what an obstacle measurement says.
+      const maxRight = window.innerWidth - wrap.offsetWidth - 8;
+      if (right > maxRight) {
+        right = Math.max(this._FALLBACK_LAUNCHER_RIGHT, maxRight);
+        wrap.style.right = `${right}px`;
+        return;
+      }
+
+      wrap.style.right = `${right}px`;
+    }
+  },
+
+  _watchLauncherPosition() {
+    if (this._launcherReposObserver) return;
+
+    const reposition = () => this._repositionLauncher();
+
+    // Debounced: this also runs off a body-wide MutationObserver, and a
+    // streaming assistant reply can mutate the DOM dozens of times a
+    // second - repositioning on every single one would be wasteful.
+    let raf = null;
+    const scheduleReposition = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        reposition();
+      });
+    };
+
+    window.addEventListener('resize', scheduleReposition);
+    window.addEventListener('scroll', scheduleReposition, true);
+
+    // Covers Share appearing/disappearing or the header re-rendering
+    // (route changes, sidebar toggle) without a resize/scroll event.
+    this._launcherReposObserver = new MutationObserver(scheduleReposition);
+    this._launcherReposObserver.observe(document.body, { childList: true, subtree: true });
+
+    reposition();
   },
 
   _buildLauncher() {
@@ -215,9 +451,10 @@ const Bookmarks = {
     wrap.id = CONFIG.ids.bookmarkLauncher;
     wrap.style.cssText = `
     position: fixed;
-    top: 14px;
-    right: 14px;
+    top: ${this._FALLBACK_LAUNCHER_TOP}px;
+    right: ${this._FALLBACK_LAUNCHER_RIGHT}px;
     z-index: 999999;
+    transition: top 0.15s ease, right 0.15s ease;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     `;
 
