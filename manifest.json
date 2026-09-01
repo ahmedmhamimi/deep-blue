@@ -29,6 +29,7 @@
         "src/features/sidebar-search.js",
         "src/features/folders.js",
         "src/features/tone-selector.js",
+        "src/features/copy-plain.js",
 
         "src/pdf/extractor.js",
         "src/pdf/renderer.js",

@@ -119,18 +119,32 @@ const ToneSelector = {
   // partway through a conversation - including changing it to "Off", which
   // otherwise wouldn't get a tag at all and so could never actually cancel
   // a tone stated earlier in that same conversation.
+  //
+  // Before the very first message is sent, the URL has no conversation
+  // slug yet - there's nothing to key persisted history off of. Using a
+  // shared placeholder key there (e.g. "new") would let history bleed
+  // between totally unrelated brand-new conversations: if an earlier
+  // fresh chat once had a tone active, the NEXT fresh chat would
+  // incorrectly inherit that "history" and could wrongly send an "ignore
+  // earlier instructions" revert tag despite never having said anything.
+  // So: no stable id yet means we always treat this as truly fresh, and we
+  // never persist anything under a shared bucket.
   _currentConversationId() {
-    return conversationIdFromHref(location.pathname) || 'new';
+    return conversationIdFromHref(location.pathname);
   },
 
   _lastInjectedId() {
+    const convId = this._currentConversationId();
+    if (!convId) return undefined;
     const map = Store.getToneLastInjected();
-    return map[this._currentConversationId()];
+    return map[convId];
   },
 
   _markInjected(toneId) {
+    const convId = this._currentConversationId();
+    if (!convId) return;
     const map = Store.getToneLastInjected();
-    map[this._currentConversationId()] = toneId;
+    map[convId] = toneId;
     Store.setToneLastInjected(map);
   },
 

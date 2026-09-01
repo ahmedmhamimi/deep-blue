@@ -80,3 +80,114 @@ function conversationIdFromHref(href) {
 function uid() {
   return 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+
+// Converts a rendered message's DOM (DeepSeek renders markdown into real
+// <strong>/<em>/<code>/<table>/etc. elements client-side, not raw markdown
+// text) into clean plain text: no **, #, `, |, or other markdown syntax,
+// just readable text with sensible line breaks, "- " bullets, numbered
+// list items, and "label (url)" for links.
+function htmlNodeToPlainText(root) {
+  let out = '';
+
+  function walkChildren(node) {
+    for (const child of node.childNodes) walk(child);
+  }
+
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent;
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    switch (node.tagName) {
+      case 'BR':
+        out += '\n';
+        return;
+      case 'HR':
+        out += '\n\n';
+        return;
+      case 'IMG':
+        return;
+
+      case 'PRE': {
+        const codeEl = node.querySelector('code') || node;
+        out += '\n' + codeEl.textContent.replace(/\s+$/, '') + '\n\n';
+        return;
+      }
+
+      // Only reached for INLINE code - a <pre><code> block returns early
+      // above and never walks into its own <code> child.
+      case 'CODE':
+        out += node.textContent;
+        return;
+
+      case 'A': {
+        const before = out.length;
+        walkChildren(node);
+        const label = out.slice(before).trim();
+        const href = node.getAttribute('href');
+        if (href && href !== label && !href.startsWith('#')) {
+          out = out.slice(0, before) + label + ` (${href})`;
+        }
+        return;
+      }
+
+      case 'LI': {
+        const parentTag = node.parentElement?.tagName;
+        if (parentTag === 'OL') {
+          const index = Array.prototype.indexOf.call(node.parentElement.children, node) + 1;
+          out += `${index}. `;
+        } else {
+          out += '- ';
+        }
+        walkChildren(node);
+        out += '\n';
+        return;
+      }
+
+      case 'TABLE': {
+        node.querySelectorAll('tr').forEach((tr) => {
+          const cells = Array.from(tr.querySelectorAll('th, td')).map((c) => c.textContent.trim());
+          out += cells.join('  |  ') + '\n';
+        });
+        out += '\n';
+        return;
+      }
+
+      case 'UL':
+      case 'OL':
+        // Element children only (i.e. the <li>s) - a whitespace-only text
+        // node between list items in the source markup shouldn't turn into
+        // a spurious blank line in the copied text.
+        Array.from(node.children).forEach((li) => walk(li));
+        out += '\n';
+        return;
+
+      case 'P':
+      case 'H1':
+      case 'H2':
+      case 'H3':
+      case 'H4':
+      case 'H5':
+      case 'H6':
+      case 'DIV':
+      case 'BLOCKQUOTE':
+        walkChildren(node);
+        out += '\n\n';
+        return;
+
+      default:
+        walkChildren(node);
+        return;
+    }
+  }
+
+  walkChildren(root);
+  return out
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
