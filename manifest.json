@@ -28,6 +28,7 @@
         "src/features/chat-search.js",
         "src/features/sidebar-search.js",
         "src/features/folders.js",
+        "src/features/tone-selector.js",
 
         "src/pdf/extractor.js",
         "src/pdf/renderer.js",

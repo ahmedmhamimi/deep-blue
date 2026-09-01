@@ -53,6 +53,24 @@ function nextFrame() {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
+// Sets a value on a React-controlled <textarea>/<input> the "real" way: by
+// calling the native property setter (bypassing the element's own
+// overridden `value` setter that React installs) and then dispatching a
+// real 'input' event. A plain `el.value = x` would update the DOM but
+// React's internal state would never see it - the framework would just
+// re-render over it or ignore it entirely.
+function setNativeInputValue(element, value) {
+  const proto =
+    element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  if (setter) {
+    setter.call(element, value);
+  } else {
+    element.value = value;
+  }
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function conversationIdFromHref(href) {
   if (!href) return null;
   const match = href.match(/\/chat\/s\/([a-zA-Z0-9-]+)/);

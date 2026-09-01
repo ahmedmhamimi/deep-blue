@@ -23,6 +23,7 @@ function isOwnMutation(mutations) {
       node?.closest?.(`#${CONFIG.ids.sidebarSearchBar}`) ||
       node?.closest?.(`#${CONFIG.ids.folderSection}`) ||
       node?.closest?.(`#${CONFIG.ids.folderMenu}`) ||
+      node?.closest?.(`#${CONFIG.ids.toneRow}`) ||
       node?.classList?.contains?.('deepblue-token-counter') ||
       node?.classList?.contains?.('deepblue-search-highlight') ||
       node?.classList?.contains?.('deepblue-add-to-folder-btn') ||
@@ -40,6 +41,7 @@ function runScan() {
   SidebarSearch.ensureInjected();
   SidebarSearch._reapplyIfActive();
   Folders.ensureInjected();
+  ToneSelector.ensureInjected();
 }
 
 const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);

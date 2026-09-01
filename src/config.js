@@ -35,6 +35,10 @@ const CONFIG = {
     folderList: 'deepblue-folder-list',
     folderAddBtn: 'deepblue-folder-add-btn',
     folderMenu: 'deepblue-folder-menu',
+    toneRow: 'deepblue-tone-row',
+    toneTrack: 'deepblue-tone-track',
+    toneHighlight: 'deepblue-tone-highlight',
+    toneAddBtn: 'deepblue-tone-add-btn',
   },
   selectors: {
     fileInput: 'input[type="file"][multiple], input[type="file"]',
@@ -90,6 +94,20 @@ const CONFIG = {
       { name: 'Pink', hex: '#ec4899' },
       { name: 'Teal', hex: '#14b8a6' },
       { name: 'Gray', hex: '#6b7280' },
+    ],
+  },
+  tone: {
+    storageKey: 'deepblue-tone-v1',
+    // Appended verbatim (never hidden) as the message's last line, so what
+    // you see is always exactly what DeepSeek received - no mismatch
+    // between the chat log and the actual request, ever.
+    presets: [
+      { id: 'none', label: 'Off', emoji: '' },
+      { id: 'friendly', label: 'Friendly', emoji: '😊' },
+      { id: 'fun', label: 'Fun', emoji: '🎉' },
+      { id: 'professional', label: 'Professional', emoji: '👔' },
+      { id: 'concise', label: 'Concise', emoji: '✂️' },
+      { id: 'empathetic', label: 'Empathetic', emoji: '💛' },
     ],
   },
   timing: {

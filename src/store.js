@@ -1,4 +1,4 @@
-// store.js - thin, error-safe localStorage wrapper for folder data.
+// store.js - thin, error-safe localStorage wrapper for folder + tone-preset data.
 //
 // Depends on: config.js (CONFIG, BRAND_NAME).
 //
@@ -49,5 +49,13 @@ const Store = {
 
   setAssignments(assignments) {
     return this._write(CONFIG.folders.assignmentsKey, assignments);
+  },
+
+  getToneState() {
+    return this._read(CONFIG.tone.storageKey, { selectedId: 'none', customTones: [] });
+  },
+
+  setToneState(state) {
+    return this._write(CONFIG.tone.storageKey, state);
   },
 };
