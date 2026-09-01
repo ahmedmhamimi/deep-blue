@@ -18,6 +18,7 @@ const BRAND_NAME = 'DeepBlue';
 const CONFIG = {
   ids: {
     exportBtn: 'deepblue-export-pdf-btn',
+    copyConversationBtn: 'deepblue-copy-conversation-btn',
     counter: 'deepblue-char-counter',
     countSpan: 'deepblue-char-count',
     renderStage: 'deepblue-pdf-render-stage',

@@ -2,7 +2,10 @@
 //
 // Depends on: config.js, dom.js, features/char-counter.js,
 // features/generation-timer.js, pdf/pdf-export.js (PdfExport.run, wired as
-// a click handler and called lazily - safe regardless of file order).
+// a click handler and called lazily - safe regardless of file order),
+// features/copy-plain.js (CopyPlain.copyConversation, same lazy-reference
+// pattern - toolbar.js loads before copy-plain.js in manifest.json, but the
+// reference is only invoked on click, long after every module has loaded).
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
 // Content scripts injected this way share a single JS realm, so top-level
@@ -27,6 +30,7 @@ const Toolbar = {
         // been swapped out from under us - re-check/re-wire every scan
         // instead of assuming a one-time wire-up is still valid.
         this._wireCharacterCounter();
+        this._ensureCopyConversationButton();
         return;
       }
 
@@ -48,9 +52,25 @@ const Toolbar = {
       sendWrapper.style.order = sendWrapper.style.order || '999';
 
       this._wireCharacterCounter();
+      this._ensureCopyConversationButton();
     } catch (err) {
       console.debug(`${BRAND_NAME}: toolbar injection error`, err);
     }
+  },
+
+  // Sits immediately to the left of the "export conversation as PDF"
+  // button, so the two whole-conversation actions (copy plain text /
+  // download PDF) live side by side in the composer toolbar. Injected as
+  // a separate step (rather than folded into the block above) so it still
+  // gets added/re-checked on scans where isInjected() short-circuits.
+  _ensureCopyConversationButton() {
+    if (document.getElementById(CONFIG.ids.copyConversationBtn)) return;
+    const exportBtn = document.getElementById(CONFIG.ids.exportBtn);
+    if (!exportBtn || !exportBtn.parentNode) return;
+
+    const btn = this._buildCopyConversationButton();
+    exportBtn.parentNode.insertBefore(btn, exportBtn);
+    btn.style.order = '997';
   },
 
   _buildExportButton() {
@@ -81,6 +101,68 @@ const Toolbar = {
       }
     });
     return btn;
+  },
+
+  _buildCopyConversationButton() {
+    const btn = document.createElement('div');
+    btn.id = CONFIG.ids.copyConversationBtn;
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('tabindex', '0');
+    btn.setAttribute('aria-label', `Copy whole conversation without markdown (${BRAND_NAME})`);
+    btn.className =
+      'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
+    btn.style.cssText =
+      '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
+    btn.title = 'Copy whole conversation without markdown';
+    btn.innerHTML = `
+    <div class="ds-button__background"></div>
+    <div class="ds-button__icon ds-button__icon--last-child">${Toolbar._copyIcon()}</div>`;
+    btn.addEventListener('click', () => CopyPlain.copyConversation(btn));
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        CopyPlain.copyConversation(btn);
+      }
+    });
+    return btn;
+  },
+
+  _copyIcon() {
+    return `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="7" y="7" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M5 15V4a1 1 0 0 1 1-1h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M9.5 12.3H14.5M9.5 15.3H14.5M9.5 18.3H12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    `;
+  },
+
+  _checkIcon() {
+    return `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    `;
+  },
+
+  // Flips a toolbar action button (icon + title) to a success/failure
+  // state for a moment, then restores exactly what was there before -
+  // works for either the export or copy-conversation button since both
+  // share the same "background + icon" inner markup.
+  flashToolbarButton(btn, success, failTitle) {
+    if (!btn) return;
+    const originalHTML = btn.innerHTML;
+    const originalTitle = btn.title;
+    btn.innerHTML = `
+    <div class="ds-button__background"></div>
+    <div class="ds-button__icon ds-button__icon--last-child">${
+      success ? Toolbar._checkIcon() : Toolbar._copyIcon()
+    }</div>`;
+    btn.title = success ? 'Copied!' : failTitle || 'Could not copy. Please try again.';
+    setTimeout(() => {
+      btn.innerHTML = originalHTML;
+      btn.title = originalTitle;
+    }, 1200);
   },
 
   _buildCounter() {
@@ -158,7 +240,8 @@ const Toolbar = {
     if (!this._clickListenerAdded) {
       document.addEventListener('click', (e) => {
         const target = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
-        if (!target || target.id === CONFIG.ids.exportBtn) return;
+        if (!target || target.id === CONFIG.ids.exportBtn || target.id === CONFIG.ids.copyConversationBtn)
+          return;
         GenerationTimer.noteRequestStart();
         for (const delay of CONFIG.timing.postClickRecheckDelaysMs) {
           setTimeout(() => CharCounter.update(DOM.findTextarea()), delay);

@@ -8,7 +8,11 @@
 // overlay position, so it sits naturally next to the other per-message
 // actions.
 //
-// Depends on: config.js, dom.js, utils.js (queryFirst, htmlNodeToPlainText).
+// Depends on: config.js, dom.js, utils.js (queryFirst, htmlNodeToPlainText),
+// features/toolbar.js (Toolbar.flashToolbarButton, used by
+// copyConversation() - toolbar.js loads before this file in manifest.json,
+// but the reference is only invoked on click, long after every module has
+// loaded).
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
 // Content scripts injected this way share a single JS realm, so top-level
@@ -110,6 +114,45 @@ const CopyPlain = {
       btn.innerHTML = original;
       btn.title = 'Copy without markdown formatting';
     }, 1200);
+  },
+
+  // Whole-conversation counterpart to _copy() above, wired to the toolbar
+  // button built in toolbar.js (next to the "export as PDF" button)
+  // instead of a per-message button. Walks every message in DOM order and
+  // joins them into one plain-text transcript.
+  async copyConversation(btn) {
+    try {
+      const text = this._buildConversationText();
+      if (!text) {
+        Toolbar.flashToolbarButton(btn, false, 'No conversation to copy yet.');
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      Toolbar.flashToolbarButton(btn, true);
+    } catch (err) {
+      console.debug(`${BRAND_NAME}: copy whole conversation failed`, err);
+      Toolbar.flashToolbarButton(btn, false);
+    }
+  },
+
+  _buildConversationText() {
+    const messages = DOM.findMessages();
+    const parts = [];
+
+    messages.forEach((message) => {
+      if (this._isAssistantMessage(message)) {
+        const markdown = message.querySelector(CONFIG.selectors.markdown);
+        if (!markdown) return;
+        const text = htmlNodeToPlainText(markdown);
+        if (text) parts.push(`DeepSeek:\n${text}`);
+      } else {
+        const text =
+          message.querySelector(CONFIG.selectors.userMessageMarker)?.textContent?.trim() || '';
+        if (text) parts.push(`You:\n${text}`);
+      }
+    });
+
+    return parts.join('\n\n');
   },
 
   _icon() {
