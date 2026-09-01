@@ -1,8 +1,9 @@
 // utils.js - small, dependency-free helper functions.
 //
 // debounce / queryFirst / escapeHtml / sanitizeFilename / nextFrame /
-// conversationIdFromHref / uid. Depends only on config.js (BRAND_NAME) for
-// one debug log line.
+// setNativeInputValue / conversationIdFromHref / uid / isInsideDeepBlueUI /
+// isDeepBlueOwnedElement / pluralize / hashText / htmlNodeToPlainText.
+// Depends only on config.js (BRAND_NAME) for one debug log line.
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
 // Content scripts injected this way share a single JS realm, so top-level
@@ -79,6 +80,42 @@ function conversationIdFromHref(href) {
 
 function uid() {
   return 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// True if `node` (or any ancestor of it) is part of DeepBlue's own
+// injected UI, using the single naming convention every DeepBlue element
+// follows - an id or class containing 'deepblue-', or (for a couple of
+// plain-dataset markers, e.g. Folders' sidebar-row decoration) a
+// data-deepblue-* attribute. One attribute-selector query covers all of
+// it, so a brand-new feature's ids/classes are automatically recognized
+// here without this function (or its callers) needing to be updated -
+// unlike an explicit per-feature id/class list, which silently stops
+// covering anything new the moment someone forgets to add it.
+function isInsideDeepBlueUI(node) {
+  if (!node) return false;
+  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  if (!el || typeof el.closest !== 'function') return false;
+  return !!el.closest('[id^="deepblue-"], [class*="deepblue-"], [data-deepblue-folderized]');
+}
+
+// True for any element that's part of DeepBlue's own injected UI (as
+// opposed to DeepSeek's native page). Every id DeepBlue assigns is
+// prefixed 'deepblue-' (see config.js's CONFIG.ids), so this one check
+// covers all of them - including ones added after this function was
+// written - without every call site needing its own growing list of
+// specific ids to exclude. Used where a selector deliberately matches
+// DeepSeek's native controls (e.g. its circular send button) that one of
+// our own injected buttons also happens to share a class with for visual
+// consistency (see features/toolbar.js), so "real vs. ours" needs to be
+// disambiguated at runtime.
+function isDeepBlueOwnedElement(el) {
+  return !!(el && el.id && el.id.startsWith('deepblue-'));
+}
+
+// "1 message" vs "3 messages" - small, but avoids grammatically-off text
+// showing up in generated PDFs and other user-facing surfaces.
+function pluralize(count, noun, pluralNoun) {
+  return count === 1 ? `1 ${noun}` : `${count} ${pluralNoun || noun + 's'}`;
 }
 
 // Small FNV-1a style hash - not cryptographic, just good enough to turn a

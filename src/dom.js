@@ -20,12 +20,25 @@ const DOM = {
     const scope = fileInput?.closest('.bf38813a') || fileInput?.parentElement || document;
     const wrapper =
       scope.querySelector(CONFIG.selectors.fitContentWrapper) ||
-      scope
-        .querySelector(CONFIG.selectors.primaryCircleButton)
-        ?.closest(CONFIG.selectors.fitContentWrapper);
-    return (
-      wrapper || scope.querySelector?.(CONFIG.selectors.primaryCircleButton)?.parentElement || null
-    );
+      this._findRealPrimaryButton(scope)?.closest(CONFIG.selectors.fitContentWrapper);
+    return wrapper || this._findRealPrimaryButton(scope)?.parentElement || null;
+  },
+
+  // Same selector DeepSeek's own circular send button matches
+  // (CONFIG.selectors.primaryCircleButton) - but toolbar.js gives a couple
+  // of DeepBlue's own injected buttons that exact same class list for
+  // visual consistency, and those can render EARLIER in DOM order than
+  // the real send button (e.g. the PDF export / copy-conversation buttons
+  // are inserted just before it). A plain first-match querySelector would
+  // then find one of ours instead of the real button. Skip anything with
+  // a 'deepblue-' id (see utils.js isDeepBlueOwnedElement) and keep
+  // looking until an actual DeepSeek button turns up.
+  _findRealPrimaryButton(scope) {
+    const candidates = scope.querySelectorAll(CONFIG.selectors.primaryCircleButton);
+    for (const el of candidates) {
+      if (!isDeepBlueOwnedElement(el)) return el;
+    }
+    return null;
   },
 
   findTextarea() {

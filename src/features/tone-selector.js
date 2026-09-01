@@ -202,7 +202,10 @@ const ToneSelector = {
       'click',
       (e) => {
         const btn = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
-        if (!btn || btn.id === CONFIG.ids.exportBtn) return;
+        // Skip DeepBlue's own buttons (export/copy-conversation/etc) - they
+        // reuse this same class for visual consistency but aren't a real
+        // "send" action. See isDeepBlueOwnedElement in utils.js.
+        if (!btn || isDeepBlueOwnedElement(btn)) return;
         this._injectIntoTextareaIfNeeded(DOM.findTextarea());
       },
       true

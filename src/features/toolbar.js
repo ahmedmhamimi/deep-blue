@@ -116,7 +116,7 @@ const Toolbar = {
     btn.title = 'Copy whole conversation without markdown';
     btn.innerHTML = `
     <div class="ds-button__background"></div>
-    <div class="ds-button__icon ds-button__icon--last-child">${Toolbar._copyIcon()}</div>`;
+    <div class="ds-button__icon ds-button__icon--last-child">${this._copyIcon()}</div>`;
     btn.addEventListener('click', () => CopyPlain.copyConversation(btn));
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -156,7 +156,7 @@ const Toolbar = {
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">${
-      success ? Toolbar._checkIcon() : Toolbar._copyIcon()
+      success ? this._checkIcon() : this._copyIcon()
     }</div>`;
     btn.title = success ? 'Copied!' : failTitle || 'Could not copy. Please try again.';
     setTimeout(() => {
@@ -240,8 +240,10 @@ const Toolbar = {
     if (!this._clickListenerAdded) {
       document.addEventListener('click', (e) => {
         const target = e.target.closest?.(CONFIG.selectors.primaryCircleButton);
-        if (!target || target.id === CONFIG.ids.exportBtn || target.id === CONFIG.ids.copyConversationBtn)
-          return;
+        // Skip DeepBlue's own buttons (export/copy-conversation/etc) - only
+        // a real send click should start the generation timer. See
+        // isDeepBlueOwnedElement in utils.js.
+        if (!target || isDeepBlueOwnedElement(target)) return;
         GenerationTimer.noteRequestStart();
         for (const delay of CONFIG.timing.postClickRecheckDelaysMs) {
           setTimeout(() => CharCounter.update(DOM.findTextarea()), delay);

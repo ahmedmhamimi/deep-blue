@@ -12,30 +12,14 @@
 
 'use strict';
 
+// True if every mutation in this batch originated from DeepBlue's own
+// writes to the page, rather than DeepSeek re-rendering something. Uses
+// the single shared isInsideDeepBlueUI check (utils.js) instead of a
+// hand-maintained per-feature id/class list, so a new feature's injected
+// elements are automatically excluded here as soon as they follow the
+// 'deepblue-' naming convention every other feature already uses.
 function isOwnMutation(mutations) {
-  return mutations.every((m) => {
-    const node = m.target;
-    return (
-      node?.id?.startsWith?.('deepblue-') ||
-      node?.closest?.(`#${CONFIG.ids.renderStage}`) ||
-      node?.closest?.(`#${CONFIG.ids.contextMeter}`) ||
-      node?.closest?.(`#${CONFIG.ids.searchBar}`) ||
-      node?.closest?.(`#${CONFIG.ids.sidebarSearchBar}`) ||
-      node?.closest?.(`#${CONFIG.ids.folderSection}`) ||
-      node?.closest?.(`#${CONFIG.ids.folderMenu}`) ||
-      node?.closest?.(`#${CONFIG.ids.toneRow}`) ||
-      node?.classList?.contains?.('deepblue-token-counter') ||
-      node?.classList?.contains?.('deepblue-copy-plain-btn') ||
-      node?.classList?.contains?.('deepblue-msg-pdf-btn') ||
-      node?.classList?.contains?.('deepblue-bookmark-btn') ||
-      node?.closest?.(`#${CONFIG.ids.bookmarkLauncher}`) ||
-      node?.closest?.(`#${CONFIG.ids.bookmarkPanel}`) ||
-      node?.classList?.contains?.('deepblue-search-highlight') ||
-      node?.classList?.contains?.('deepblue-add-to-folder-btn') ||
-      node?.dataset?.deepblueFolderized === '1' ||
-      node?.classList?.contains?.('deepblue-qa-toast')
-    );
-  });
+  return mutations.every((m) => isInsideDeepBlueUI(m.target));
 }
 
 function runScan() {

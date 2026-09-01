@@ -336,7 +336,13 @@ const ChatSearch = {
       // Find the container where we can insert highlights
       const contentEl = markdown || userMarker || message;
 
-      // Walk through text nodes and highlight matches
+      // Collect every matching text node FIRST, then mutate. A
+      // TreeWalker's nextNode() computes the next node from the current
+      // node's own parent/sibling references - if we replace the current
+      // node (as highlighting does, via replaceChild) before asking for
+      // the next one, that node has just been detached and no longer has
+      // a parent to climb from, silently truncating the walk. Two
+      // separate passes - gather, then mutate - sidesteps that entirely.
       const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => {
           if (node.textContent.toLowerCase().includes(searchTerm)) {
@@ -346,9 +352,12 @@ const ChatSearch = {
         },
       });
 
-      let textNode;
+      const matchingTextNodes = [];
+      let walked;
+      while ((walked = walker.nextNode())) matchingTextNodes.push(walked);
+
       let occurrenceIndex = 0;
-      while ((textNode = walker.nextNode())) {
+      matchingTextNodes.forEach((textNode) => {
         const text = textNode.textContent;
         const lowerText = text.toLowerCase();
         let startIndex = 0;
@@ -391,7 +400,7 @@ const ChatSearch = {
           occurrenceIndex++;
           startIndex += searchTerm.length;
         }
-      }
+      });
     });
 
     this._searchResults = results;

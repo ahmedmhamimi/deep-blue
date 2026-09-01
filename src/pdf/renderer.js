@@ -37,7 +37,7 @@ const Renderer = {
     header.innerHTML = `
     <div class="db-logo">${escapeHtml(BRAND_NAME)}</div>
     <h1 class="db-title">${escapeHtml(conversation.title)}</h1>
-    <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${conversation.messages.length} messages</div>
+    <div class="db-subtitle">Exported on ${escapeHtml(timestamp)} - ${pluralize(conversation.messages.length, 'message')}</div>
     `;
     root.appendChild(header);
     blocks.push(header);
