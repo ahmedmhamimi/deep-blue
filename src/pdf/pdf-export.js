@@ -43,7 +43,36 @@ const PdfExport = {
     }
   },
 
-  async _generate(conversation) {
+  // Same generation pipeline as run(), but for a caller-supplied
+  // conversation (e.g. a single user/assistant pair) instead of the whole
+  // extracted chat, and with its own filename. Shares the `_running` guard
+  // with run() so a per-message export and a full-conversation export
+  // never rasterize into the same off-screen #${CONFIG.ids.renderStage}
+  // node at the same time.
+  async exportMessages(conversation, filename) {
+    if (PdfExport._running) {
+      alert('An export is already in progress. Please wait for it to finish.');
+      return false;
+    }
+    if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
+      alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
+      return false;
+    }
+    if (!conversation || conversation.messages.length === 0) {
+      alert('Nothing to export.');
+      return false;
+    }
+
+    PdfExport._running = true;
+    try {
+      await PdfExport._generate(conversation, filename);
+      return true;
+    } finally {
+      PdfExport._running = false;
+    }
+  },
+
+  async _generate(conversation, filenameOverride) {
     const { root, blocks } = Renderer.buildStage(conversation);
     document.body.appendChild(root);
 
@@ -127,7 +156,7 @@ const PdfExport = {
         }
       }
 
-      pdf.save(sanitizeFilename(conversation.title) + '.pdf');
+      pdf.save((filenameOverride || sanitizeFilename(conversation.title)) + '.pdf');
     } finally {
       root.remove();
     }

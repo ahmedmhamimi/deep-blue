@@ -36,6 +36,7 @@
         "src/pdf/extractor.js",
         "src/pdf/renderer.js",
         "src/pdf/pdf-export.js",
+        "src/features/message-pdf-export.js",
 
         "src/bootstrap.js"
       ],

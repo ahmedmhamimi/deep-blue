@@ -8,7 +8,7 @@
 //
 // Depends on: config.js, utils.js (debounce), dom.js, bridge-client.js, and every
 // feature module (Toolbar, TokenCounter, ContextMeter, ChatSearch,
-// SidebarSearch, Folders).
+// SidebarSearch, Folders, CopyPlain, MessagePdfExport, Bookmarks, QuickActions).
 
 'use strict';
 
@@ -26,6 +26,7 @@ function isOwnMutation(mutations) {
       node?.closest?.(`#${CONFIG.ids.toneRow}`) ||
       node?.classList?.contains?.('deepblue-token-counter') ||
       node?.classList?.contains?.('deepblue-copy-plain-btn') ||
+      node?.classList?.contains?.('deepblue-msg-pdf-btn') ||
       node?.classList?.contains?.('deepblue-bookmark-btn') ||
       node?.closest?.(`#${CONFIG.ids.bookmarkLauncher}`) ||
       node?.closest?.(`#${CONFIG.ids.bookmarkPanel}`) ||
@@ -48,6 +49,7 @@ function runScan() {
   Folders.ensureInjected();
   ToneSelector.ensureInjected();
   CopyPlain.scan();
+  MessagePdfExport.scan();
   Bookmarks.scan();
   QuickActions.scan();
 }
