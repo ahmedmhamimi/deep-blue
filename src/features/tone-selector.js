@@ -106,24 +106,67 @@ const ToneSelector = {
   // -- the tag itself ------------------------------------------------------
 
   _tagText(tone) {
+    if (tone.id === 'none') {
+      return 'Tone: Off (ignore any earlier tone instructions - back to your normal, default tone)';
+    }
     return `Tone: ${tone.label}${tone.emoji ? ' ' + tone.emoji : ''}`;
   },
 
+  // DeepSeek carries a stated tone forward through the rest of a
+  // conversation on its own (it's right there in the chat history), so
+  // re-appending it on every single message would just be redundant
+  // clutter. We only need to say something when the tone actually CHANGES
+  // partway through a conversation - including changing it to "Off", which
+  // otherwise wouldn't get a tag at all and so could never actually cancel
+  // a tone stated earlier in that same conversation.
+  _currentConversationId() {
+    return conversationIdFromHref(location.pathname) || 'new';
+  },
+
+  _lastInjectedId() {
+    const map = Store.getToneLastInjected();
+    return map[this._currentConversationId()];
+  },
+
+  _markInjected(toneId) {
+    const map = Store.getToneLastInjected();
+    map[this._currentConversationId()] = toneId;
+    Store.setToneLastInjected(map);
+  },
+
+  _needsInjection(tone) {
+    const last = this._lastInjectedId();
+    if (tone.id === 'none') {
+      // Only worth an explicit "Off" tag if we'd previously told the model
+      // to use some other tone earlier in THIS conversation. A
+      // conversation that has always been "Off" should never get one.
+      return last !== undefined && last !== 'none';
+    }
+    return last !== tone.id;
+  },
+
   // Appends the active tone tag to the composer text, the "real" way (see
-  // setNativeInputValue), right before a send actually happens. No-ops for
-  // "Off", for an empty message, or if the tag is somehow already there.
+  // setNativeInputValue), right before a send actually happens - but only
+  // when the tone has changed since we last told the model, for this
+  // conversation. No-ops for an empty message.
   _injectIntoTextareaIfNeeded(textarea) {
     if (!textarea) return;
-    const state = this._getState();
-    if (state.selectedId === 'none') return;
 
     const tone = this._selectedTone();
-    const tag = this._tagText(tone);
+    if (!this._needsInjection(tone)) return;
+
     const current = textarea.value;
-    if (!current || !current.trim() || current.includes(tag)) return;
+    if (!current || !current.trim()) return;
+
+    const tag = this._tagText(tone);
+    if (current.includes(tag)) {
+      this._markInjected(tone.id);
+      return;
+    }
 
     const separator = current.endsWith('\n') ? '\n' : '\n\n';
     setNativeInputValue(textarea, current + separator + tag);
+    this._markInjected(tone.id);
   },
 
   _wireSendInterception() {
@@ -254,11 +297,10 @@ const ToneSelector = {
 
     const labelsFlex = document.createElement('div');
     labelsFlex.style.cssText = `
+    position: relative;
     flex: 1 1 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     min-width: 0;
+    height: 18px;
     padding: 0 7px;
     `;
     labelsLine.appendChild(labelsFlex);
@@ -399,31 +441,65 @@ const ToneSelector = {
 
     labelsFlex.innerHTML = '';
     tones.forEach((tone, i) => {
-      labelsFlex.appendChild(this._buildLabelItem(tone, i, index));
+      labelsFlex.appendChild(this._buildLabelItem(tone, i, tones.length, index));
     });
 
     this._positionThumbLabel();
   },
 
-  _buildLabelItem(tone, i, selectedIndex) {
+  // Absolutely positioned at the same percent-of-track the slider uses
+  // (see _positionThumbLabel), rather than laid out with flex
+  // space-between - space-between only pins the FIRST/LAST label's edges
+  // to the container edges, so every label's actual center (which depends
+  // on its own text width) drifts away from where the thumb lands,
+  // especially once custom tones with longer names are added. Percent-based
+  // absolute placement keeps every label's center matched to its stop.
+  _buildLabelItem(tone, i, total, selectedIndex) {
     const isCustom = !CONFIG.tone.presets.some((p) => p.id === tone.id);
     const isSelected = i === selectedIndex;
+    const percent = total > 1 ? (i / (total - 1)) * 100 : 0;
+
+    // First/last labels hug the track's ends outward instead of centering
+    // (which would push them half off the edge and get clipped).
+    let transform = 'translate(-50%, -50%)';
+    let leftStyle = `${percent}%`;
+    if (i === 0) {
+      transform = 'translateY(-50%)';
+      leftStyle = '0';
+    } else if (i === total - 1) {
+      transform = 'translate(-100%, -50%)';
+    }
 
     const item = document.createElement('div');
     item.className = 'deepblue-tone-label-item';
     item.dataset.toneId = tone.id;
     item.dataset.index = String(i);
     item.style.cssText = `
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: ${leftStyle};
+    transform: ${transform};
     font-size: 12px;
     font-weight: ${isSelected ? '700' : '500'};
     color: ${isSelected ? '#3964fe' : '#8e8e93'};
     white-space: nowrap;
     user-select: none;
+    cursor: pointer;
     transition: color 0.15s ease;
     `;
     item.textContent = tone.id === 'none' ? 'Off' : tone.emoji ? `${tone.label} ${tone.emoji}` : tone.label;
-    item.title = tone.id === 'none' ? 'No tone tag added' : `Appends "${this._tagText(tone)}" to your message`;
+    item.title =
+      tone.id === 'none' ? 'Click to turn tone tagging off' : `Click to select \u2013 appends "${this._tagText(tone)}" to your message`;
+
+    item.addEventListener('click', () => {
+      const slider = this._slider;
+      if (slider) {
+        slider.value = String(i);
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        this._select(tone.id);
+      }
+    });
 
     if (isCustom) {
       const remove = document.createElement('span');
@@ -444,6 +520,7 @@ const ToneSelector = {
         remove.style.color = '#8e8e93';
       });
       remove.addEventListener('click', (e) => {
+        // Stops the label's own click (select-this-tone) from also firing.
         e.stopPropagation();
         this._removeCustomTone(tone.id);
       });

@@ -58,4 +58,16 @@ const Store = {
   setToneState(state) {
     return this._write(CONFIG.tone.storageKey, state);
   },
+
+  // conversationId (or 'new' pre-first-message) -> last tone id actually
+  // told to the model in that conversation. Lets us only append the tag
+  // when the tone actually changes, instead of on every single message -
+  // DeepSeek already carries it forward via chat history once stated.
+  getToneLastInjected() {
+    return this._read(CONFIG.tone.lastInjectedKey, {});
+  },
+
+  setToneLastInjected(map) {
+    return this._write(CONFIG.tone.lastInjectedKey, map);
+  },
 };

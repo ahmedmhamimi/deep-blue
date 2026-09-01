@@ -96,6 +96,7 @@ const CONFIG = {
   },
   tone: {
     storageKey: 'deepblue-tone-v1',
+    lastInjectedKey: 'deepblue-tone-last-injected-v1',
     // Appended verbatim (never hidden) as the message's last line, so what
     // you see is always exactly what DeepSeek received - no mismatch
     // between the chat log and the actual request, ever.
