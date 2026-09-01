@@ -57,6 +57,20 @@ const CONFIG = {
     messageButtonRow: ['.ds-flex._965abe9'],
     shareButton: '.ds-button[title*="Share" i]',
     headerActionButton: '.the-header .ds-button',
+    // Sibling action row next to a user message (copy + edit icons,
+    // hover-revealed via CSS but always present in the DOM). The edit
+    // button is the LAST .ds-button inside it - copy is first, edit is
+    // second/last, confirmed via DOM dump. Verified against a specific
+    // DeepSeek build; if this class ever stops matching, the folder
+    // fallback below (find-by-icon-position) can be used instead.
+    userMessageActionRow: '._11d6b3a',
+    // Sidebar "..." conversation options button, revealed on hover of a
+    // conversation row.
+    sidebarConversationMenuBtn: '._2090548',
+    // Container wrapping the "..." button + folder-star affordances,
+    // used to force it visible (DeepSeek hides it at width:0/height:0
+    // until the row is actually hovered - see quick-actions.js).
+    sidebarConversationMenuWrap: '._254829d',
     primaryCircleButton: '.ds-button.ds-button--primary.ds-button--filled.ds-button--circle',
     fitContentWrapper: 'div[style*="width: fit-content"]',
     headerContainer: 'header, .ds-header, [class*="header"]',

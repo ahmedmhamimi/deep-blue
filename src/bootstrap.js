@@ -31,7 +31,8 @@ function isOwnMutation(mutations) {
       node?.closest?.(`#${CONFIG.ids.bookmarkPanel}`) ||
       node?.classList?.contains?.('deepblue-search-highlight') ||
       node?.classList?.contains?.('deepblue-add-to-folder-btn') ||
-      node?.dataset?.deepblueFolderized === '1'
+      node?.dataset?.deepblueFolderized === '1' ||
+      node?.classList?.contains?.('deepblue-qa-toast')
     );
   });
 }
@@ -48,6 +49,7 @@ function runScan() {
   ToneSelector.ensureInjected();
   CopyPlain.scan();
   Bookmarks.scan();
+  QuickActions.scan();
 }
 
 const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);
