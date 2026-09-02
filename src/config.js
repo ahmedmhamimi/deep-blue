@@ -41,6 +41,9 @@ const CONFIG = {
     bookmarkLauncher: 'deepblue-bookmark-launcher',
     bookmarkBadge: 'deepblue-bookmark-badge',
     bookmarkPanel: 'deepblue-bookmark-panel',
+    downloadMenu: 'deepblue-download-menu',
+    promptLibraryBtn: 'deepblue-prompt-library-btn',
+    promptLibraryPanel: 'deepblue-prompt-library-panel',
   },
   selectors: {
     fileInput: 'input[type="file"][multiple], input[type="file"]',
@@ -131,6 +134,40 @@ const CONFIG = {
   bookmarks: {
     storageKey: 'deepblue-bookmarks-v1',
     snippetLength: 90,
+  },
+  prompts: {
+    storageKey: 'deepblue-prompts-v1',
+    snippetLength: 110,
+    // Seeded once, the very first time the library is opened (i.e. when
+    // nothing has ever been saved to storageKey yet) - so the feature is
+    // immediately useful instead of greeting a new user with an empty
+    // list. If the user later deletes every prompt on purpose, storage
+    // holds a real (empty) array by then, so these are never re-added.
+    defaults: [
+      {
+        title: 'Explain simply',
+        content:
+          "Explain the following like I'm new to the topic. Use plain language and a short example:\n\n",
+      },
+      {
+        title: 'Improve my writing',
+        content:
+          'Improve the clarity, grammar, and flow of the following text, keeping its original meaning and tone:\n\n',
+      },
+      {
+        title: 'Summarize',
+        content: 'Summarize the key points below as a short bulleted list:\n\n',
+      },
+      {
+        title: 'Find the bug',
+        content:
+          "Here is some code that isn't behaving as expected. Find the bug, explain why it happens, and show the fix:\n\n",
+      },
+      {
+        title: 'Pros and cons',
+        content: 'List the strongest pros and cons of the following, in balanced, concise bullet points:\n\n',
+      },
+    ],
   },
   timing: {
     initialScanDelayMs: 1200,

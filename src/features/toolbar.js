@@ -1,8 +1,15 @@
-// features/toolbar.js - export button + char counter injected into the composer toolbar.
+// features/toolbar.js - download button + char counter injected into the composer toolbar.
 //
-// Depends on: config.js, dom.js, features/char-counter.js,
-// features/generation-timer.js, pdf/pdf-export.js (PdfExport.run, wired as
-// a click handler and called lazily - safe regardless of file order),
+// Clicking the download button no longer exports a PDF directly - it opens
+// export/download-menu.js's DownloadMenu popover so the person can choose
+// PDF, JSON, or plain text first, then routes to the matching exporter
+// (pdf/pdf-export.js for PDF, export/format-export.js for JSON/text).
+//
+// Depends on: config.js, dom.js, utils.js (sanitizeFilename), features/char-counter.js,
+// features/generation-timer.js, pdf/extractor.js (Extractor.extract),
+// pdf/pdf-export.js (PdfExport.run), export/download-menu.js (DownloadMenu),
+// export/format-export.js (FormatExport) - all wired as click handlers and
+// called lazily, so this is safe regardless of file order in manifest.json.
 // features/copy-plain.js (CopyPlain.copyConversation, same lazy-reference
 // pattern - toolbar.js loads before copy-plain.js in manifest.json, but the
 // reference is only invoked on click, long after every module has loaded).
@@ -78,12 +85,12 @@ const Toolbar = {
     btn.id = CONFIG.ids.exportBtn;
     btn.setAttribute('role', 'button');
     btn.setAttribute('tabindex', '0');
-    btn.setAttribute('aria-label', `Export conversation as PDF (${BRAND_NAME})`);
+    btn.setAttribute('aria-label', `Download conversation (${BRAND_NAME})`);
     btn.className =
       'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
     btn.style.cssText =
       '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
-    btn.title = `Export conversation as PDF (${BRAND_NAME})`;
+    btn.title = `Download conversation (${BRAND_NAME})`;
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">
@@ -93,14 +100,50 @@ const Toolbar = {
     <path d="M4 16H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V16Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     </svg>
     </div>`;
-    btn.addEventListener('click', PdfExport.run);
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Toolbar._openDownloadMenu(btn);
+    });
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        PdfExport.run();
+        Toolbar._openDownloadMenu(btn);
       }
     });
     return btn;
+  },
+
+  // Opens the format-choice popover anchored to the download button, and
+  // routes to the right exporter once a format is picked. PDF reuses the
+  // existing whole-conversation pipeline (PdfExport.run, which itself
+  // re-extracts the conversation); JSON/text extract once here since
+  // there's no heavy render stage to share the way the PDF path has.
+  _openDownloadMenu(anchorBtn) {
+    if (DownloadMenu.isOpen()) {
+      DownloadMenu.close();
+      return;
+    }
+    DownloadMenu.open(anchorBtn, (format) => Toolbar._downloadConversation(format));
+  },
+
+  async _downloadConversation(format) {
+    if (format === 'pdf') {
+      await PdfExport.run();
+      return;
+    }
+
+    try {
+      const conversation = Extractor.extract();
+      if (!conversation || !conversation.messages.length) {
+        alert('No conversation to export. Please start a chat first.');
+        return;
+      }
+      const baseFilename = sanitizeFilename(conversation.title);
+      FormatExport.downloadAs(conversation, baseFilename, format);
+    } catch (err) {
+      console.error(`${BRAND_NAME}: download failed`, err);
+      alert('Failed to download conversation. Please try again.');
+    }
   },
 
   _buildCopyConversationButton() {

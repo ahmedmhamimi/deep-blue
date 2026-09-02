@@ -8,7 +8,8 @@
 //
 // Depends on: config.js, utils.js (debounce), dom.js, bridge-client.js, and every
 // feature module (Toolbar, TokenCounter, ContextMeter, ChatSearch,
-// SidebarSearch, Folders, CopyPlain, MessagePdfExport, Bookmarks, QuickActions).
+// SidebarSearch, Folders, PromptLibrary, CopyPlain, MessagePdfExport,
+// Bookmarks, QuickActions).
 
 'use strict';
 
@@ -45,6 +46,7 @@ function runScan() {
   SidebarSearch._reapplyIfActive(sidebarLinks);
   Folders.ensureInjected(sidebarLinks);
   ToneSelector.ensureInjected();
+  PromptLibrary.ensureInjected();
 
   CopyPlain.scan(messages);
   MessagePdfExport.scan(messages);

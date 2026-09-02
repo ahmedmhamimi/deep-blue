@@ -1,17 +1,20 @@
-// features/message-pdf-export.js - adds a "download this response as PDF"
-// button to each assistant response's action row, right next to the
-// "copy without markdown" button added by copy-plain.js.
+// features/message-pdf-export.js - adds a "download this response" button
+// to each assistant response's action row, right next to the "copy without
+// markdown" button added by copy-plain.js.
 //
-// Clicking it exports just that one exchange - the assistant's response
-// plus the user message that prompted it - as a standalone PDF, reusing
-// the same extraction/render/PDF pipeline as the full-conversation export
-// (pdf/extractor.js + pdf/renderer.js + pdf/pdf-export.js) rather than
-// building a second document pipeline.
+// Clicking it opens export/download-menu.js's DownloadMenu popover so the
+// person can choose PDF, JSON, or plain text, then exports just that one
+// exchange - the assistant's response plus the user message that prompted
+// it - as a standalone file. PDF reuses the existing
+// extraction/render/PDF pipeline (pdf/extractor.js + pdf/renderer.js +
+// pdf/pdf-export.js); JSON/text reuse export/format-export.js - rather
+// than building a second document pipeline for either.
 //
 // Depends on: config.js, dom.js, utils.js (queryFirst, sanitizeFilename),
-// pdf/extractor.js (Extractor), pdf/pdf-export.js (PdfExport). Must be
-// loaded AFTER copy-plain.js (so its button can anchor off
-// .deepblue-copy-plain-btn) and AFTER src/pdf/pdf-export.js in
+// pdf/extractor.js (Extractor), pdf/pdf-export.js (PdfExport),
+// export/download-menu.js (DownloadMenu), export/format-export.js
+// (FormatExport). Must be loaded AFTER copy-plain.js (so its button can
+// anchor off .deepblue-copy-plain-btn) and AFTER src/pdf/pdf-export.js in
 // manifest.json's content_scripts[].js array.
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
@@ -44,7 +47,7 @@ const MessagePdfExport = {
 
   _processMessage(message, index, allMessages) {
     if (this._processed.has(message)) return;
-    if (message.querySelector('.deepblue-msg-pdf-btn')) {
+    if (message.querySelector('.deepblue-msg-download-btn')) {
       this._processed.add(message);
       return;
     }
@@ -87,8 +90,8 @@ const MessagePdfExport = {
   _buildButton(assistantMessage) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'deepblue-msg-pdf-btn';
-    btn.title = 'Download this response as PDF';
+    btn.className = 'deepblue-msg-download-btn';
+    btn.title = 'Download this response';
     btn.style.cssText = `
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 50%; border: none; background: none;
@@ -108,57 +111,78 @@ const MessagePdfExport = {
     });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this._export(assistantMessage, btn);
+      if (btn.disabled) return;
+      if (DownloadMenu.isOpen()) {
+        DownloadMenu.close();
+        return;
+      }
+      DownloadMenu.open(btn, (format) => this._export(assistantMessage, btn, format));
     });
 
     return btn;
   },
 
-  async _export(assistantMessage, btn) {
+  // Reads the live DOM for this one exchange (assistant response + the
+  // user message that prompted it) into the same `conversation` shape
+  // Extractor.extract() produces for the whole chat, then hands off to
+  // whichever exporter matches the format the person picked.
+  _buildExchange(assistantMessage) {
+    const markdown = assistantMessage.querySelector(CONFIG.selectors.markdown);
+    if (!markdown) return null;
+
+    // Re-read the live message list at click time (not scan time) so the
+    // index is correct even if messages were added/removed since.
+    const liveMessages = Array.from(DOM.findMessages());
+    const index = liveMessages.indexOf(assistantMessage);
+    const userMessage = this._findPrecedingUserMessage(
+      index === -1 ? liveMessages.length : index,
+      liveMessages
+    );
+
+    const conversationMessages = [];
+    let promptSnippet = '';
+    if (userMessage) {
+      const text =
+        userMessage.querySelector(CONFIG.selectors.userMessageMarker)?.textContent?.trim() || '';
+      if (text) {
+        conversationMessages.push({ role: 'user', content: text, isHTML: false });
+        promptSnippet = text;
+      }
+    }
+    conversationMessages.push({
+      role: 'assistant',
+      content: Extractor._renderNodeChildren(markdown),
+      isHTML: true,
+    });
+
+    const chatTitle = DOM.findConversationTitle();
+    return {
+      conversation: { title: chatTitle, messages: conversationMessages },
+      baseFilename: sanitizeFilename(promptSnippet || chatTitle) + '-response',
+    };
+  },
+
+  async _export(assistantMessage, btn, format) {
     if (btn.disabled) return;
     btn.disabled = true;
     btn.style.cursor = 'default';
-    const spinning = this._spinIcon();
-    btn.innerHTML = spinning;
+    btn.innerHTML = this._spinIcon();
 
     try {
-      const markdown = assistantMessage.querySelector(CONFIG.selectors.markdown);
-      if (!markdown) {
+      const exchange = this._buildExchange(assistantMessage);
+      if (!exchange) {
         alert('Could not read this response. Please try again.');
         this._flash(btn, false);
         return;
       }
 
-      // Re-read the live message list at click time (not scan time) so
-      // the index is correct even if messages were added/removed since.
-      const liveMessages = Array.from(DOM.findMessages());
-      const index = liveMessages.indexOf(assistantMessage);
-      const userMessage = this._findPrecedingUserMessage(
-        index === -1 ? liveMessages.length : index,
-        liveMessages
-      );
-
-      const conversationMessages = [];
-      let promptSnippet = '';
-      if (userMessage) {
-        const text =
-          userMessage.querySelector(CONFIG.selectors.userMessageMarker)?.textContent?.trim() || '';
-        if (text) {
-          conversationMessages.push({ role: 'user', content: text, isHTML: false });
-          promptSnippet = text;
-        }
+      let ok;
+      if (format === 'pdf') {
+        ok = await PdfExport.exportMessages(exchange.conversation, exchange.baseFilename);
+      } else {
+        ok = FormatExport.downloadAs(exchange.conversation, exchange.baseFilename, format);
+        if (!ok) alert('Nothing to export.');
       }
-      conversationMessages.push({
-        role: 'assistant',
-        content: Extractor._renderNodeChildren(markdown),
-        isHTML: true,
-      });
-
-      const chatTitle = DOM.findConversationTitle();
-      const conversation = { title: chatTitle, messages: conversationMessages };
-      const filename = sanitizeFilename(promptSnippet || chatTitle) + '-response';
-
-      const ok = await PdfExport.exportMessages(conversation, filename);
       this._flash(btn, ok !== false);
     } catch (err) {
       console.error(`${BRAND_NAME}: per-response export failed`, err);
@@ -172,10 +196,10 @@ const MessagePdfExport = {
 
   _flash(btn, success) {
     btn.innerHTML = success ? this._checkIcon() : this._icon();
-    btn.title = success ? 'Downloaded!' : 'Download this response as PDF';
+    btn.title = success ? 'Downloaded!' : 'Download this response';
     setTimeout(() => {
       btn.innerHTML = this._icon();
-      btn.title = 'Download this response as PDF';
+      btn.title = 'Download this response';
     }, 1200);
   },
 

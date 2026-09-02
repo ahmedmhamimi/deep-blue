@@ -79,4 +79,16 @@ const Store = {
   setBookmarks(map) {
     return this._write(CONFIG.bookmarks.storageKey, map);
   },
+
+  // [{id, title, content, createdAt}], shared across every conversation.
+  // Fallback is `null` (not `[]`) so PromptLibrary can tell "never saved
+  // anything yet" apart from "user deleted every prompt on purpose" and
+  // only seed the built-in defaults in the first case.
+  getPrompts() {
+    return this._read(CONFIG.prompts.storageKey, null);
+  },
+
+  setPrompts(list) {
+    return this._write(CONFIG.prompts.storageKey, list);
+  },
 };
