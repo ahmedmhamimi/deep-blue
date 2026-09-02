@@ -1,8 +1,11 @@
 // pdf/pdf-export.js - orchestrates extraction, off-screen render, and jsPDF assembly.
 //
 // Depends on: config.js, dom.js, utils.js, features/toolbar.js (Toolbar,
-// for loading state), pdf/extractor.js (Extractor), pdf/renderer.js
-// (Renderer), and the vendor libs html2canvas / jspdf loaded before it.
+// for loading state), export/loading-overlay.js (LoadingOverlay - shows a
+// visible "generating your PDF" pill for the duration, since this path -
+// unlike JSON/text export - can genuinely take a few seconds), pdf/extractor.js
+// (Extractor), pdf/renderer.js (Renderer), and the vendor libs html2canvas
+// / jspdf loaded before it.
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
 // Content scripts injected this way share a single JS realm, so top-level
@@ -20,23 +23,28 @@ const PdfExport = {
     if (PdfExport._running) return;
     PdfExport._running = true;
     Toolbar.setExportButtonLoading(true);
+    LoadingOverlay.show('Generating your PDF\u2026');
 
     try {
       if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
         alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
+        LoadingOverlay.finish(false, 'Could not load the PDF engine');
         return;
       }
 
       const conversation = Extractor.extract();
       if (!conversation || conversation.messages.length === 0) {
         alert('No conversation to export. Please start a chat first.');
+        LoadingOverlay.hide();
         return;
       }
 
       await PdfExport._generate(conversation);
+      LoadingOverlay.finish(true, 'PDF downloaded!');
     } catch (err) {
       console.error(`${BRAND_NAME}: export failed`, err);
       alert('Failed to export conversation. Please try again.');
+      LoadingOverlay.finish(false, 'PDF export failed');
     } finally {
       Toolbar.setExportButtonLoading(false);
       PdfExport._running = false;
@@ -64,9 +72,14 @@ const PdfExport = {
     }
 
     PdfExport._running = true;
+    LoadingOverlay.show('Generating this response as a PDF\u2026');
     try {
       await PdfExport._generate(conversation, filename);
+      LoadingOverlay.finish(true, 'PDF downloaded!');
       return true;
+    } catch (err) {
+      LoadingOverlay.finish(false, 'PDF export failed');
+      throw err;
     } finally {
       PdfExport._running = false;
     }

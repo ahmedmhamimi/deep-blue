@@ -28,6 +28,7 @@
         "src/pdf/extractor.js",
         "src/export/download-menu.js",
         "src/export/format-export.js",
+        "src/export/loading-overlay.js",
 
         "src/features/toolbar.js",
         "src/features/chat-search.js",
