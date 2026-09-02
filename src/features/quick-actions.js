@@ -31,11 +31,11 @@ const QuickActions = {
   _processedMessages: new WeakSet(),
   _processedSidebarLinks: new WeakSet(),
 
-  scan() {
+  scan(messages, sidebarLinks) {
     try {
       this._injectStyles();
-      this._wireMessages();
-      this._wireSidebarLinks();
+      this._wireMessages(messages);
+      this._wireSidebarLinks(sidebarLinks);
     } catch (err) {
       console.debug(`${BRAND_NAME}: quick-actions error`, err);
     }
@@ -112,9 +112,8 @@ const QuickActions = {
 
   // -- 1. sidebar: double-click title to rename ------------------------------
 
-  _wireSidebarLinks() {
-    const links = DOM.getSidebarConversationLinks();
-    links.forEach((link) => {
+  _wireSidebarLinks(links) {
+    (links || DOM.getSidebarConversationLinks()).forEach((link) => {
       if (this._processedSidebarLinks.has(link)) return;
       this._processedSidebarLinks.add(link);
       link.classList.add('deepblue-qa-dbl-hint');
@@ -220,9 +219,8 @@ const QuickActions = {
 
   // -- 2. messages: double-click a user message to edit ----------------------
 
-  _wireMessages() {
-    const messages = DOM.findMessages();
-    messages.forEach((message) => {
+  _wireMessages(messages) {
+    (messages || DOM.findMessages()).forEach((message) => {
       if (this._processedMessages.has(message)) return;
       // Only user-sent messages have an edit button - assistant replies
       // don't, and we shouldn't pretend otherwise.

@@ -1,7 +1,7 @@
 // features/chat-search.js - in-chat search bar with next/prev navigation.
 //
 // Works against DeepSeek's virtualized message list.
-// Depends on: config.js, dom.js.
+// Depends on: config.js, dom.js, utils.js (debounce).
 //
 // Loaded as a classic (non-module) content script listed in manifest.json.
 // Content scripts injected this way share a single JS realm, so top-level
@@ -17,6 +17,18 @@ const ChatSearch = {
   _currentIndex: -1,
   _isSearching: false,
   _observer: null,
+
+  // Both the live 'input' listener and the mutation observer below used
+  // to call _performSearch() directly and synchronously - on every single
+  // keystroke, and on every DOM mutation batch observed on the message
+  // list (which, while a response is actively streaming in, can fire many
+  // times per second). Each call re-walks and re-highlights the entire
+  // visible conversation, so debouncing here is what keeps typing quick
+  // search terms - or having a search active while a reply streams in -
+  // from turning into a lot of redundant full-conversation re-scans.
+  // Explicit, discrete actions (clearing the box) still call
+  // _performSearch() directly for instant feedback.
+  _debouncedSearch: debounce((query) => ChatSearch._performSearch(query), 150),
 
   ensureInjected() {
     if (document.getElementById(CONFIG.ids.searchBar)) return;
@@ -55,7 +67,7 @@ const ChatSearch = {
       // If we have an active search, re-run it when new messages appear
       const input = document.getElementById(CONFIG.ids.searchInput);
       if (input && input.value.trim()) {
-        this._performSearch(input.value);
+        this._debouncedSearch(input.value);
       }
     });
 
@@ -219,7 +231,7 @@ const ChatSearch = {
 
     if (input) {
       input.addEventListener('input', () => {
-        this._performSearch(input.value);
+        this._debouncedSearch(input.value);
       });
 
       input.addEventListener('focus', () => {

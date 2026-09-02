@@ -26,10 +26,9 @@
 const CopyPlain = {
   _processed: new WeakSet(),
 
-  scan() {
+  scan(messages) {
     try {
-      const messages = DOM.findMessages();
-      messages.forEach((message) => this._processMessage(message));
+      (messages || DOM.findMessages()).forEach((message) => this._processMessage(message));
     } catch (err) {
       console.debug(`${BRAND_NAME}: copy-without-markdown error`, err);
     }

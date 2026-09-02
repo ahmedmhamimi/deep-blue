@@ -26,10 +26,10 @@
 const MessagePdfExport = {
   _processed: new WeakSet(),
 
-  scan() {
+  scan(messages) {
     try {
-      const messages = Array.from(DOM.findMessages());
-      messages.forEach((message, index) => this._processMessage(message, index, messages));
+      const list = Array.from(messages || DOM.findMessages());
+      list.forEach((message, index) => this._processMessage(message, index, list));
     } catch (err) {
       console.debug(`${BRAND_NAME}: per-response PDF export error`, err);
     }

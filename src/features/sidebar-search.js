@@ -110,7 +110,7 @@ const SidebarSearch = {
     return container;
   },
 
-  _applyFilter(query) {
+  _applyFilter(query, links) {
     const term = (query || '').trim().toLowerCase();
     const clearBtn = document.getElementById(CONFIG.ids.sidebarSearchClear);
     if (clearBtn) {
@@ -118,9 +118,7 @@ const SidebarSearch = {
       clearBtn.style.pointerEvents = term ? 'auto' : 'none';
     }
 
-    const links = DOM.getSidebarConversationLinks();
-
-    links.forEach((link) => {
+    (links || DOM.getSidebarConversationLinks()).forEach((link) => {
       const titleEl = link.querySelector(CONFIG.selectors.sidebarConversationTitle);
       const title = (titleEl?.textContent || link.textContent || '').toLowerCase();
       const matches = !term || title.includes(term);
@@ -148,10 +146,10 @@ const SidebarSearch = {
     }
   },
 
-  _reapplyIfActive() {
+  _reapplyIfActive(links) {
     const input = document.getElementById(CONFIG.ids.sidebarSearchInput);
     if (input && input.value.trim()) {
-      this._applyFilter(input.value);
+      this._applyFilter(input.value, links);
     }
   },
 };

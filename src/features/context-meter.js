@@ -65,7 +65,7 @@ const ContextMeter = {
     return wrap;
   },
 
-  scan() {
+  scan(messages) {
     try {
       this.ensureInjected();
       const el = document.getElementById(CONFIG.ids.contextMeter);
@@ -73,7 +73,10 @@ const ContextMeter = {
 
       const exactTokens = Bridge.latestTokenUsage;
       const isExact = typeof exactTokens === 'number';
-      const tokens = isExact ? exactTokens : ContextEstimator.estimateConversation();
+      // Only fall back to the (comparatively expensive) DOM-based estimate
+      // when the bridge hasn't reported a real usage figure yet - and even
+      // then, reuse the shared `messages` list instead of re-querying it.
+      const tokens = isExact ? exactTokens : ContextEstimator.estimateConversation(messages);
 
       const limit = CONFIG.contextWindow.limit;
       const pct = limit > 0 ? Math.min(100, (tokens / limit) * 100) : 0;

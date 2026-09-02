@@ -96,12 +96,11 @@ const Bookmarks = {
 
   // -- scanning currently-rendered messages ---------------------------------
 
-  scan() {
+  scan(messages) {
     try {
       this._ensureLauncher();
       const convId = this._conversationId();
-      const messages = DOM.findMessages();
-      messages.forEach((message) => this._processMessage(message, convId));
+      (messages || DOM.findMessages()).forEach((message) => this._processMessage(message, convId));
       this._updateBadge(convId);
     } catch (err) {
       console.debug(`${BRAND_NAME}: bookmarks error`, err);

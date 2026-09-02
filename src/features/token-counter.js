@@ -31,10 +31,9 @@ const TokenCounter = {
     return Math.max(1, Math.round(tokens));
   },
 
-  scan() {
+  scan(messages) {
     try {
-      const messages = DOM.findMessages();
-      messages.forEach((message) => this._processMessage(message));
+      (messages || DOM.findMessages()).forEach((message) => this._processMessage(message));
     } catch (err) {
       console.debug(`${BRAND_NAME}: token counter error`, err);
     }

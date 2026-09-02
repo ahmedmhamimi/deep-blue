@@ -24,18 +24,32 @@ function isOwnMutation(mutations) {
 
 function runScan() {
   Toolbar.ensureInjected();
-  TokenCounter.scan();
-  ContextMeter.scan();
+
+  // Every message-scanning feature below used to run its own independent
+  // document.querySelectorAll() over the whole message list on every
+  // single scan tick - up to 5 redundant full-DOM queries per tick, all
+  // returning the exact same set of nodes. Query once here and hand the
+  // same live NodeList to each of them instead.
+  const messages = DOM.findMessages();
+  TokenCounter.scan(messages);
+  ContextMeter.scan(messages);
+
   ChatSearch.ensureInjected();
   ChatSearch._injectStyles();
+
+  // Same redundancy, same fix, for the sidebar's conversation-link list:
+  // Folders, QuickActions, and (when its search box has an active query)
+  // SidebarSearch each used to re-query it independently every tick.
+  const sidebarLinks = DOM.getSidebarConversationLinks();
   SidebarSearch.ensureInjected();
-  SidebarSearch._reapplyIfActive();
-  Folders.ensureInjected();
+  SidebarSearch._reapplyIfActive(sidebarLinks);
+  Folders.ensureInjected(sidebarLinks);
   ToneSelector.ensureInjected();
-  CopyPlain.scan();
-  MessagePdfExport.scan();
-  Bookmarks.scan();
-  QuickActions.scan();
+
+  CopyPlain.scan(messages);
+  MessagePdfExport.scan(messages);
+  Bookmarks.scan(messages);
+  QuickActions.scan(messages, sidebarLinks);
 }
 
 const debouncedScan = debounce(runScan, CONFIG.timing.observerDebounceMs);

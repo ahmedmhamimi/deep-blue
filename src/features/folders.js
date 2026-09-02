@@ -17,9 +17,9 @@ const Folders = {
   _menuOpenFor: null,
   _draggingConvId: null, // same-page drag state; dataTransfer alone is unreliable across some setups
 
-  ensureInjected() {
+  ensureInjected(sidebarLinks) {
     if (document.getElementById(CONFIG.ids.folderSection)) {
-      this._syncRows();
+      this._syncRows(sidebarLinks);
       return;
     }
 
@@ -30,7 +30,7 @@ const Folders = {
     anchor.insertAdjacentElement('afterend', this._buildSection());
     this._injectStyles();
     this._wireGlobalListeners();
-    this._syncRows();
+    this._syncRows(sidebarLinks);
   },
 
   // -- persistence helpers --------------------------------------------
@@ -507,9 +507,8 @@ const Folders = {
 
   // -- per-conversation "add to folder" affordance ----------------------
 
-  _syncRows() {
-    const links = DOM.getSidebarConversationLinks();
-    links.forEach((link) => this._decorateRow(link));
+  _syncRows(links) {
+    (links || DOM.getSidebarConversationLinks()).forEach((link) => this._decorateRow(link));
   },
 
   _decorateRow(link) {
