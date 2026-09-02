@@ -58,13 +58,13 @@ const QuickActions = {
       bottom: 28px;
       transform: translate(-50%, 0);
       z-index: 999999;
-      background: #1d1d1f;
-      color: #ffffff;
+      background: var(--db-text);
+      color: var(--db-surface);
       font-size: 12.5px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       padding: 8px 14px;
       border-radius: 999px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      box-shadow: var(--db-shadow-lg);
       pointer-events: none;
       animation: deepblue-qa-toast-in 0.15s ease;
     }

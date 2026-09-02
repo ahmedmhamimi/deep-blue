@@ -210,9 +210,9 @@ const Bookmarks = {
     style.id = 'deepblue-bookmark-styles';
     style.textContent = `
     @keyframes deepblue-bookmark-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(57,100,254,0.5); }
-      70% { box-shadow: 0 0 0 10px rgba(57,100,254,0); }
-      100% { box-shadow: 0 0 0 0 rgba(57,100,254,0); }
+      0% { box-shadow: 0 0 0 0 rgba(var(--db-accent-rgb), 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(var(--db-accent-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--db-accent-rgb), 0); }
     }
 
     @keyframes deepblue-bookmark-pop {
@@ -257,12 +257,12 @@ const Bookmarks = {
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      border: 1.5px solid #e5e7eb;
+      border: 1.5px solid var(--db-border);
       cursor: pointer;
       padding: 0;
-      background: #ffffff;
-      color: #9ca3af;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+      background: var(--db-surface);
+      color: var(--db-text-tertiary);
+      box-shadow: var(--db-shadow-sm);
       opacity: 0;
       transform: scale(0.85);
       transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease,
@@ -280,25 +280,25 @@ const Bookmarks = {
     }
 
     .deepblue-bookmark-btn:hover {
-      border-color: #3964fe;
-      color: #3964fe;
-      box-shadow: 0 3px 10px rgba(57,100,254,0.22);
+      border-color: var(--db-accent);
+      color: var(--db-accent);
+      box-shadow: 0 3px 10px rgba(var(--db-accent-rgb), 0.22);
       transform: scale(1.08);
     }
 
     .deepblue-bookmark-btn[data-bookmarked="true"] {
       opacity: 1;
       pointer-events: auto;
-      background: #3964fe;
-      border-color: #3964fe;
-      color: #ffffff;
-      box-shadow: 0 2px 8px rgba(57,100,254,0.35);
+      background: var(--db-accent);
+      border-color: var(--db-accent);
+      color: var(--db-surface);
+      box-shadow: 0 2px 8px rgba(var(--db-accent-rgb), 0.35);
     }
 
     .deepblue-bookmark-btn[data-bookmarked="true"]:hover {
-      background: #2c4fd6;
-      border-color: #2c4fd6;
-      box-shadow: 0 3px 12px rgba(57,100,254,0.4);
+      background: var(--db-accent-hover);
+      border-color: var(--db-accent-hover);
+      box-shadow: 0 3px 12px rgba(var(--db-accent-rgb), 0.4);
     }
 
     .deepblue-bookmark-btn--pop {
@@ -464,8 +464,8 @@ const Bookmarks = {
     position: relative;
     display: flex; align-items: center; justify-content: center;
     width: 38px; height: 38px; border-radius: 50%;
-    background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    cursor: pointer; color: #3964fe; padding: 0;
+    background: var(--db-surface); border: 1px solid var(--db-border); box-shadow: var(--db-shadow-md);
+    cursor: pointer; color: var(--db-accent); padding: 0;
     transition: box-shadow 0.15s ease, transform 0.1s ease;
     `;
     btn.innerHTML = `
@@ -487,9 +487,9 @@ const Bookmarks = {
     badge.style.cssText = `
     position: absolute; top: -4px; right: -4px;
     min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px;
-    background: #ef4444; color: #ffffff; font-size: 10px; font-weight: 700;
+    background: var(--db-danger); color: var(--db-surface); font-size: 10px; font-weight: 700;
     display: none; align-items: center; justify-content: center;
-    box-shadow: 0 0 0 2px #ffffff;
+    box-shadow: 0 0 0 2px var(--db-surface);
     `;
     btn.appendChild(badge);
     this._badgeEl = badge;
@@ -530,10 +530,10 @@ const Bookmarks = {
     right: 14px;
     width: 300px;
     max-height: 420px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+    background: var(--db-surface);
+    border: 1px solid var(--db-border);
     border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: var(--db-shadow-lg);
     z-index: 999999;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     overflow: hidden;
@@ -544,14 +544,14 @@ const Bookmarks = {
     const header = document.createElement('div');
     header.style.cssText = `
     display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px; border-bottom: 1px solid #f0f1f4; flex-shrink: 0;
+    padding: 10px 12px; border-bottom: 1px solid var(--db-surface-hover); flex-shrink: 0;
     `;
-    header.innerHTML = `<span style="font-size:13px; font-weight:700; color:#1d1d1f;">Bookmarks in this chat</span>`;
+    header.innerHTML = `<span style="font-size:13px; font-weight:700; color:var(--db-text);">Bookmarks in this chat</span>`;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.title = 'Close';
     closeBtn.style.cssText =
-      'border:none; background:none; cursor:pointer; color:#8e8e93; font-size:16px; line-height:1; padding:2px;';
+      'border:none; background:none; cursor:pointer; color:var(--db-text-secondary); font-size:16px; line-height:1; padding:2px;';
     closeBtn.textContent = '\u00d7';
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -587,7 +587,7 @@ const Bookmarks = {
     if (!entries.length) {
       const empty = document.createElement('div');
       empty.style.cssText =
-        'padding: 24px 16px; text-align:center; color:#8e8e93; font-size:12.5px; line-height:1.5;';
+        'padding: 24px 16px; text-align:center; color:var(--db-text-secondary); font-size:12.5px; line-height:1.5;';
       empty.textContent =
         'No bookmarks yet. Hover a message and click the bookmark icon in its corner to save it here.';
       list.appendChild(empty);
@@ -604,24 +604,24 @@ const Bookmarks = {
     const row = document.createElement('div');
     row.style.cssText = `
     display: flex; align-items: flex-start; gap: 8px;
-    padding: 10px 12px; border-bottom: 1px solid #f5f6f8; cursor: pointer;
+    padding: 10px 12px; border-bottom: 1px solid var(--db-surface-sunken); cursor: pointer;
     transition: background 0.12s ease;
     `;
-    row.addEventListener('mouseenter', () => (row.style.background = '#f7f8fa'));
+    row.addEventListener('mouseenter', () => (row.style.background = 'var(--db-surface-hover)'));
     row.addEventListener('mouseleave', () => (row.style.background = 'none'));
     row.addEventListener('click', () => this._goTo(entry.key));
 
     const roleTag = document.createElement('div');
     roleTag.style.cssText = `
     flex-shrink: 0; margin-top: 1px; font-size: 10px; font-weight: 700; text-transform: uppercase;
-    color: ${entry.role === 'user' ? '#3964fe' : '#22c55e'};
+    color: ${entry.role === 'user' ? 'var(--db-accent)' : '#22c55e'};
     `;
     roleTag.textContent = entry.role === 'user' ? 'You' : 'AI';
     row.appendChild(roleTag);
 
     const text = document.createElement('div');
     text.style.cssText =
-      'flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: #1d1d1f; line-height: 1.4;';
+      'flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--db-text); line-height: 1.4;';
     text.textContent = entry.snippet;
     row.appendChild(text);
 
@@ -629,17 +629,17 @@ const Bookmarks = {
     remove.type = 'button';
     remove.title = 'Remove bookmark';
     remove.style.cssText = `
-    flex-shrink: 0; border: none; background: none; cursor: pointer; color: #c9ccd3;
+    flex-shrink: 0; border: none; background: none; cursor: pointer; color: var(--db-border-strong);
     font-size: 15px; line-height: 1; padding: 0 2px;
     `;
     remove.textContent = '\u00d7';
     remove.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      remove.style.color = '#ef4444';
+      remove.style.color = 'var(--db-danger)';
     });
     remove.addEventListener('mouseleave', (e) => {
       e.stopPropagation();
-      remove.style.color = '#c9ccd3';
+      remove.style.color = 'var(--db-border-strong)';
     });
     remove.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -679,7 +679,7 @@ const Bookmarks = {
     if (!list) return;
     const notice = document.createElement('div');
     notice.style.cssText =
-      'padding: 8px 12px; font-size: 11.5px; color: #ef4444; background: #fef2f2; border-bottom: 1px solid #fde8e8;';
+      'padding: 8px 12px; font-size: 11.5px; color: var(--db-danger); background: var(--db-danger-soft); border-bottom: 1px solid var(--db-danger-soft);';
     notice.textContent = text;
     list.prepend(notice);
     setTimeout(() => notice.remove(), 2500);

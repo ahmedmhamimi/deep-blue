@@ -89,14 +89,14 @@ const TokenCounter = {
  gap: 4px;
  font-size: 11px;
  font-weight: 500;
- color: #8e8e93;
+ color: var(--db-text-secondary);
  padding: 0 6px;
  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
  user-select: none;
  height: 28px;
  letter-spacing: 0.2px;
  opacity: 0.7;
- border-left: 1px solid #e9ecf0;
+ border-left: 1px solid var(--db-border-soft);
  margin-left: 4px;
  padding-left: 10px;
  `;

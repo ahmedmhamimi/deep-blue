@@ -73,18 +73,18 @@ const CopyPlain = {
     btn.style.cssText = `
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 50%; border: none; background: none;
-    color: #6c6c72; cursor: pointer; padding: 0; margin-left: 2px; flex-shrink: 0;
+    color: var(--db-text-secondary); cursor: pointer; padding: 0; margin-left: 2px; flex-shrink: 0;
     transition: background 0.15s ease, color 0.15s ease;
     `;
     btn.innerHTML = this._icon();
 
     btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#f0f1f4';
-      btn.style.color = '#1d1d1f';
+      btn.style.background = 'var(--db-surface-hover)';
+      btn.style.color = 'var(--db-text)';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.background = 'none';
-      btn.style.color = '#6c6c72';
+      btn.style.color = 'var(--db-text-secondary)';
     });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

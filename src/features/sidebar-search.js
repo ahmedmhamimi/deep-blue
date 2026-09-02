@@ -30,7 +30,7 @@ const SidebarSearch = {
  gap: 8px;
  margin: 8px 12px;
  padding: 4px 10px;
- background: #f0f2f5;
+ background: var(--db-surface-sunken);
  border-radius: 20px;
  border: 1.5px solid transparent;
  transition: all 0.25s ease;
@@ -39,13 +39,13 @@ const SidebarSearch = {
  `;
 
     container.addEventListener('focusin', () => {
-      container.style.background = '#ffffff';
-      container.style.borderColor = '#3964fe';
-      container.style.boxShadow = '0 0 0 3px rgba(57, 100, 254, 0.15)';
+      container.style.background = 'var(--db-surface)';
+      container.style.borderColor = 'var(--db-accent)';
+      container.style.boxShadow = 'var(--db-ring)';
     });
 
     container.addEventListener('focusout', () => {
-      container.style.background = '#f0f2f5';
+      container.style.background = 'var(--db-surface-sunken)';
       container.style.borderColor = 'transparent';
       container.style.boxShadow = 'none';
     });
@@ -62,7 +62,7 @@ const SidebarSearch = {
  font-size: 13px;
  padding: 6px 0;
  width: 100%;
- color: #1d1d1f;
+ color: var(--db-text);
  font-family: inherit;
  ">
  <button id="${CONFIG.ids.sidebarSearchClear}" style="
@@ -70,7 +70,7 @@ const SidebarSearch = {
  border: none;
  cursor: pointer;
  padding: 4px 4px;
- color: #8e8e93;
+ color: var(--db-text-secondary);
  border-radius: 6px;
  display: flex;
  align-items: center;
@@ -90,12 +90,12 @@ const SidebarSearch = {
 
     if (clearBtn) {
       clearBtn.addEventListener('mouseenter', () => {
-        clearBtn.style.background = '#fee2e2';
-        clearBtn.style.color = '#dc2626';
+        clearBtn.style.background = 'var(--db-danger-soft)';
+        clearBtn.style.color = 'var(--db-danger)';
       });
       clearBtn.addEventListener('mouseleave', () => {
         clearBtn.style.background = 'none';
-        clearBtn.style.color = '#8e8e93';
+        clearBtn.style.color = 'var(--db-text-secondary)';
       });
       clearBtn.addEventListener('click', () => this.clear());
     }

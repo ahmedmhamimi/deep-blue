@@ -139,21 +139,21 @@ const LoadingOverlay = {
       display: flex;
       align-items: center;
       gap: 9px;
-      background: #1d1d1f;
-      color: #ffffff;
+      background: var(--db-text);
+      color: var(--db-surface);
       font-size: 13px;
       font-weight: 600;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       padding: 10px 16px;
       border-radius: 999px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+      box-shadow: var(--db-shadow-lg);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.18s ease, transform 0.18s ease;
       white-space: nowrap;
     }
     .deepblue-loading-overlay--visible { opacity: 1; transform: translate(-50%, 0); }
-    .deepblue-loading-overlay__icon { display: flex; flex-shrink: 0; color: #ffffff; }
+    .deepblue-loading-overlay__icon { display: flex; flex-shrink: 0; color: var(--db-surface); }
     .deepblue-loading-overlay--loading .deepblue-loading-overlay__icon { color: #a8b6ff; }
     `;
     document.head.appendChild(style);

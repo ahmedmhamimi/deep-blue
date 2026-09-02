@@ -89,23 +89,23 @@ const ChatSearch = {
     gap: 8px;
     margin: 4px 12px;
     padding: 4px 10px;
-    background: #f0f2f5;
+    background: var(--db-surface-sunken);
     border-radius: 20px;
     border: 1.5px solid transparent;
     transition: all 0.25s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--db-font);
     flex-shrink: 0;
     min-width: 200px;
     `;
 
     container.addEventListener('focusin', () => {
-      container.style.background = '#ffffff';
-      container.style.borderColor = '#3964fe';
-      container.style.boxShadow = '0 0 0 3px rgba(57, 100, 254, 0.15)';
+      container.style.background = 'var(--db-surface)';
+      container.style.borderColor = 'var(--db-accent)';
+      container.style.boxShadow = 'var(--db-ring)';
     });
 
     container.addEventListener('focusout', () => {
-      container.style.background = '#f0f2f5';
+      container.style.background = 'var(--db-surface-sunken)';
       container.style.borderColor = 'transparent';
       container.style.boxShadow = 'none';
     });
@@ -123,26 +123,26 @@ const ChatSearch = {
     padding: 6px 0;
     width: 160px;
     min-width: 120px;
-    color: #1d1d1f;
+    color: var(--db-text);
     font-family: inherit;
     transition: width 0.3s ease;
     ">
     <span id="${CONFIG.ids.searchCount}" style="
     font-size: 12px;
-    color: #8e8e93;
+    color: var(--db-text-secondary);
     min-width: 42px;
     text-align: center;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
     ">0</span>
-    <div style="display: flex; align-items: center; gap: 2px; border-left: 1px solid #d0d5dd; padding-left: 6px;">
+    <div style="display: flex; align-items: center; gap: 2px; border-left: 1px solid var(--db-border-strong); padding-left: 6px;">
     <button id="${CONFIG.ids.searchPrev}" style="
     background: none;
     border: none;
     cursor: pointer;
     padding: 4px 6px;
-    color: #6c6c72;
+    color: var(--db-text-secondary);
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -161,7 +161,7 @@ const ChatSearch = {
     border: none;
     cursor: pointer;
     padding: 4px 6px;
-    color: #6c6c72;
+    color: var(--db-text-secondary);
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -181,7 +181,7 @@ const ChatSearch = {
     border: none;
     cursor: pointer;
     padding: 4px 4px;
-    color: #8e8e93;
+    color: var(--db-text-secondary);
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -205,25 +205,25 @@ const ChatSearch = {
     [prevBtn, nextBtn].forEach((btn) => {
       if (!btn) return;
       btn.addEventListener('mouseenter', () => {
-        btn.style.background = '#e4e7ed';
-        btn.style.color = '#1d1d1f';
+        btn.style.background = 'var(--db-surface-hover)';
+        btn.style.color = 'var(--db-text)';
         btn.style.opacity = '1';
       });
       btn.addEventListener('mouseleave', () => {
         btn.style.background = 'none';
-        btn.style.color = '#6c6c72';
+        btn.style.color = 'var(--db-text-secondary)';
         btn.style.opacity = this._searchResults.length > 0 ? '0.7' : '0.5';
       });
     });
 
     if (clearBtn) {
       clearBtn.addEventListener('mouseenter', () => {
-        clearBtn.style.background = '#fee2e2';
-        clearBtn.style.color = '#dc2626';
+        clearBtn.style.background = 'var(--db-danger-soft)';
+        clearBtn.style.color = 'var(--db-danger)';
       });
       clearBtn.addEventListener('mouseleave', () => {
         clearBtn.style.background = 'none';
-        clearBtn.style.color = '#8e8e93';
+        clearBtn.style.color = 'var(--db-text-secondary)';
       });
     }
 
@@ -235,14 +235,14 @@ const ChatSearch = {
       });
 
       input.addEventListener('focus', () => {
-        container.style.background = '#ffffff';
-        container.style.borderColor = '#3964fe';
-        container.style.boxShadow = '0 0 0 3px rgba(57, 100, 254, 0.15)';
+        container.style.background = 'var(--db-surface)';
+        container.style.borderColor = 'var(--db-accent)';
+        container.style.boxShadow = 'var(--db-ring)';
       });
 
       input.addEventListener('blur', () => {
         if (!input.value) {
-          container.style.background = '#f0f2f5';
+          container.style.background = 'var(--db-surface-sunken)';
           container.style.borderColor = 'transparent';
           container.style.boxShadow = 'none';
         }
@@ -388,7 +388,7 @@ const ChatSearch = {
           highlight.className = 'deepblue-search-highlight';
           highlight.textContent = match;
           highlight.style.background = '#fde68a';
-          highlight.style.color = '#1d1d1f';
+          highlight.style.color = 'var(--db-text)';
           highlight.style.padding = '0 2px';
           highlight.style.borderRadius = '3px';
           highlight.style.fontWeight = '500';
@@ -442,14 +442,14 @@ const ChatSearch = {
         const input = document.getElementById(CONFIG.ids.searchInput);
         if (input && input.value.trim()) {
           countEl.textContent = '0';
-          countEl.style.color = '#ef4444';
+          countEl.style.color = 'var(--db-danger)';
         } else {
           countEl.textContent = '0';
-          countEl.style.color = '#8e8e93';
+          countEl.style.color = 'var(--db-text-secondary)';
         }
       } else {
         countEl.textContent = `${this._currentIndex + 1}/${resultCount}`;
-        countEl.style.color = '#8e8e93';
+        countEl.style.color = 'var(--db-text-secondary)';
       }
     }
   },

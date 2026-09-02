@@ -159,10 +159,10 @@ const DownloadMenu = {
       position: fixed;
       z-index: 1000000;
       width: 236px;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
+      background: var(--db-surface);
+      border: 1px solid var(--db-border);
       border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      box-shadow: var(--db-shadow-lg);
       padding: 6px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
@@ -171,7 +171,7 @@ const DownloadMenu = {
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.3px;
-      color: #8e8e93;
+      color: var(--db-text-secondary);
       padding: 6px 10px 4px;
     }
     .deepblue-download-menu__item {
@@ -185,18 +185,18 @@ const DownloadMenu = {
       padding: 8px 10px;
       border-radius: 9px;
       text-align: left;
-      color: #1d1d1f;
+      color: var(--db-text);
       transition: background 0.12s ease;
     }
     .deepblue-download-menu__item:hover,
     .deepblue-download-menu__item:focus-visible {
-      background: #f0f1f4;
+      background: var(--db-surface-hover);
       outline: none;
     }
     .deepblue-download-menu__icon {
       flex-shrink: 0;
       display: flex;
-      color: #3964fe;
+      color: var(--db-accent);
     }
     .deepblue-download-menu__text {
       display: flex;
@@ -210,7 +210,7 @@ const DownloadMenu = {
     }
     .deepblue-download-menu__desc {
       font-size: 11.5px;
-      color: #8e8e93;
+      color: var(--db-text-secondary);
       line-height: 1.3;
     }
     `;

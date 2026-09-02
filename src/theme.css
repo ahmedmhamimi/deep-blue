@@ -1,0 +1,524 @@
+/* theme.css — DeepBlue design system.
+ *
+ * Single source of visual truth: every color, radius, shadow and easing
+ * curve used anywhere in the extension is a CSS custom property defined
+ * here. Feature files still set colors inline (`style.cssText`) for
+ * layout reasons, but they reference `var(--db-*)` tokens instead of raw
+ * hex — so this file is the only place that needs to change for the
+ * whole extension to re-theme itself, including switching between
+ * DeepSeek's light and dark modes.
+ *
+ * `data-db-theme` is set on <html> by theme.js after detecting which
+ * mode DeepSeek itself is in. Everything below keys off that attribute
+ * (falling back to prefers-color-scheme before theme.js has run once).
+ */
+
+:root {
+  /* -- brand & accent --------------------------------------------------- */
+  --db-accent: #3964fe;
+  --db-accent-hover: #2c4fd6;
+  --db-accent-soft: #eef1ff;
+  --db-accent-rgb: 57, 100, 254;
+  --db-accent-grad: linear-gradient(135deg, #4f74ff 0%, #3964fe 55%, #6c5ce7 100%);
+
+  --db-danger: #ef4444;
+  --db-danger-soft: #fef2f2;
+  --db-warn: #f5a623;
+  --db-success: #22c55e;
+
+  /* -- surfaces ----------------------------------------------------------- */
+  --db-bg: #ffffff;
+  --db-surface: #ffffff;
+  --db-surface-raised: #ffffff;
+  --db-surface-sunken: #f5f6f8;
+  --db-surface-hover: #f3f4f7;
+  --db-chip-bg: #f5f6f8;
+
+  /* -- text ----------------------------------------------------------------- */
+  --db-text: #1c1d21;
+  --db-text-secondary: #6c6c72;
+  --db-text-tertiary: #96969c;
+  --db-text-on-accent: #ffffff;
+
+  /* -- borders / dividers --------------------------------------------------- */
+  --db-border: #e7e8ec;
+  --db-border-soft: #f0f1f4;
+  --db-border-strong: #d7d9e0;
+
+  /* -- elevation ------------------------------------------------------------ */
+  --db-shadow-sm: 0 1px 2px rgba(20, 22, 30, 0.06), 0 1px 1px rgba(20, 22, 30, 0.04);
+  --db-shadow-md: 0 6px 20px rgba(20, 22, 30, 0.10), 0 2px 6px rgba(20, 22, 30, 0.06);
+  --db-shadow-lg: 0 20px 48px rgba(20, 22, 30, 0.16), 0 6px 16px rgba(20, 22, 30, 0.08);
+  --db-shadow-accent: 0 6px 16px rgba(var(--db-accent-rgb), 0.28);
+  --db-ring: 0 0 0 3px rgba(var(--db-accent-rgb), 0.16);
+
+  --db-blur: saturate(180%) blur(20px);
+
+  /* -- shape ------------------------------------------------------------------- */
+  --db-radius-sm: 8px;
+  --db-radius-md: 12px;
+  --db-radius-lg: 18px;
+  --db-radius-pill: 999px;
+
+  /* -- motion ------------------------------------------------------------------ */
+  --db-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --db-ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --db-fast: 120ms;
+  --db-base: 180ms;
+
+  --db-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  color-scheme: light;
+}
+
+html[data-db-theme="dark"] {
+  --db-bg: #1a1b1e;
+  --db-surface: #232428;
+  --db-surface-raised: #292a2f;
+  --db-surface-sunken: #1e1f23;
+  --db-surface-hover: #2f3036;
+  --db-chip-bg: #2b2c31;
+
+  --db-text: #f1f1f3;
+  --db-text-secondary: #a6a7ad;
+  --db-text-tertiary: #7b7c82;
+
+  --db-border: #35363c;
+  --db-border-soft: #2c2d32;
+  --db-border-strong: #45464d;
+
+  --db-accent-soft: rgba(var(--db-accent-rgb), 0.16);
+  --db-danger-soft: rgba(239, 68, 68, 0.14);
+
+  --db-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --db-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --db-shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.55), 0 8px 20px rgba(0, 0, 0, 0.35);
+  --db-ring: 0 0 0 3px rgba(var(--db-accent-rgb), 0.35);
+
+  color-scheme: dark;
+}
+
+/* Sensible guess before theme.js gets its first paint-time read. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-db-theme]) {
+    --db-bg: #1a1b1e;
+    --db-surface: #232428;
+    --db-surface-raised: #292a2f;
+    --db-surface-sunken: #1e1f23;
+    --db-surface-hover: #2f3036;
+    --db-chip-bg: #2b2c31;
+    --db-text: #f1f1f3;
+    --db-text-secondary: #a6a7ad;
+    --db-text-tertiary: #7b7c82;
+    --db-border: #35363c;
+    --db-border-soft: #2c2d32;
+    --db-border-strong: #45464d;
+    color-scheme: dark;
+  }
+}
+
+/* ==========================================================================
+   Keyframes
+   ========================================================================== */
+
+@keyframes db-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes db-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes db-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes db-glow-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--db-accent-rgb), 0.45); }
+  70%  { box-shadow: 0 0 0 9px rgba(var(--db-accent-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--db-accent-rgb), 0); }
+}
+
+@keyframes db-shimmer {
+  0%   { background-position: -120px 0; }
+  100% { background-position: 120px 0; }
+}
+
+/* ==========================================================================
+   Universal helpers
+   ========================================================================== */
+
+[id^="deepblue-"],
+[class*="deepblue-"] {
+  font-family: var(--db-font);
+}
+
+.db-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--db-border-strong) transparent;
+}
+.db-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.db-scroll::-webkit-scrollbar-track { background: transparent; }
+.db-scroll::-webkit-scrollbar-thumb {
+  background: var(--db-border-strong);
+  border-radius: var(--db-radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.db-scroll::-webkit-scrollbar-thumb:hover { background: var(--db-text-tertiary); }
+
+/* Consistent focus ring for anything DeepBlue renders, replacing the
+   browser default outline with something that matches the brand. */
+[id^="deepblue-"] button:focus-visible,
+[id^="deepblue-"] input:focus-visible,
+[class*="deepblue-"]:focus-visible {
+  outline: none;
+  box-shadow: var(--db-ring);
+}
+
+/* ==========================================================================
+   Chat search bar (top of conversation) + sidebar search bar
+   ========================================================================== */
+
+#deepblue-chat-search,
+#deepblue-sidebar-search {
+  background: var(--db-surface-sunken) !important;
+  animation: db-fade-in var(--db-base) var(--db-ease);
+}
+#deepblue-chat-search:focus-within,
+#deepblue-sidebar-search:focus-within {
+  background: var(--db-surface) !important;
+  border-color: var(--db-accent) !important;
+  box-shadow: var(--db-ring) !important;
+}
+#deepblue-chat-search input,
+#deepblue-sidebar-search input {
+  color: var(--db-text) !important;
+}
+#deepblue-chat-search input::placeholder,
+#deepblue-sidebar-search input::placeholder {
+  color: var(--db-text-tertiary);
+}
+#deepblue-chat-search svg,
+#deepblue-sidebar-search svg {
+  color: var(--db-text-secondary);
+}
+#deepblue-chat-search > span {
+  color: var(--db-text-secondary) !important;
+}
+#deepblue-chat-search button,
+#deepblue-sidebar-search button {
+  color: var(--db-text-secondary) !important;
+}
+#deepblue-chat-search button:hover,
+#deepblue-sidebar-search button:hover {
+  background: var(--db-surface-hover) !important;
+  color: var(--db-accent) !important;
+}
+#deepblue-chat-search > div {
+  border-color: var(--db-border-strong) !important;
+}
+.deepblue-search-highlight {
+  background: rgba(var(--db-accent-rgb), 0.28) !important;
+  border-radius: 3px;
+}
+
+/* ==========================================================================
+   Context meter / char counter / token badge (composer + message rows)
+   ========================================================================== */
+
+#deepblue-context-meter {
+  color: var(--db-text-secondary) !important;
+  border-color: var(--db-border) !important;
+  background: var(--db-surface-sunken);
+  transition: background var(--db-base) var(--db-ease), box-shadow var(--db-base) var(--db-ease);
+}
+#deepblue-context-meter:hover { background: var(--db-surface-hover); }
+#deepblue-context-meter > div { background: var(--db-border-soft) !important; }
+
+#deepblue-char-counter { color: var(--db-text-secondary); }
+
+.deepblue-token-counter {
+  color: var(--db-text-tertiary) !important;
+  border-color: var(--db-border) !important;
+}
+
+/* ==========================================================================
+   Composer toolbar cluster (char counter · tone chip · copy · download · send)
+   ========================================================================== */
+
+.db-toolbar-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#deepblue-export-pdf-btn,
+#deepblue-copy-conversation-btn {
+  transition: transform var(--db-fast) var(--db-ease-snap), filter var(--db-fast) var(--db-ease) !important;
+}
+#deepblue-export-pdf-btn:hover,
+#deepblue-copy-conversation-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+#deepblue-export-pdf-btn:active,
+#deepblue-copy-conversation-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* ==========================================================================
+   Tone selector — compact chip + floating popover
+   ========================================================================== */
+
+.db-tone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border-radius: var(--db-radius-pill);
+  border: 1.5px solid var(--db-border);
+  background: var(--db-surface-sunken);
+  color: var(--db-text-secondary);
+  font-family: var(--db-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  margin-right: 6px;
+  transition: background var(--db-fast) var(--db-ease), border-color var(--db-fast) var(--db-ease),
+    color var(--db-fast) var(--db-ease), transform var(--db-fast) var(--db-ease-snap),
+    box-shadow var(--db-fast) var(--db-ease);
+}
+.db-tone-chip:hover {
+  background: var(--db-accent-soft);
+  border-color: rgba(var(--db-accent-rgb), 0.4);
+  color: var(--db-accent);
+  transform: translateY(-1px);
+}
+.db-tone-chip:active { transform: translateY(0) scale(0.97); }
+.db-tone-chip[data-active="true"] {
+  background: var(--db-accent-grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--db-shadow-accent);
+}
+.db-tone-chip__icon { display: flex; align-items: center; flex-shrink: 0; line-height: 0; }
+.db-tone-chip__chevron {
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: transform var(--db-base) var(--db-ease);
+}
+.db-tone-chip[data-open="true"] .db-tone-chip__chevron { transform: rotate(180deg); }
+
+.db-tone-popover {
+  position: fixed;
+  z-index: 1000000;
+  width: 302px;
+  max-width: calc(100vw - 24px);
+  background: var(--db-surface);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-lg);
+  box-shadow: var(--db-shadow-lg);
+  overflow: hidden;
+  animation: db-pop-in 160ms var(--db-ease-snap);
+  transform-origin: var(--db-tone-origin-x, right) bottom;
+  backdrop-filter: var(--db-blur);
+  -webkit-backdrop-filter: var(--db-blur);
+}
+.db-tone-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+}
+.db-tone-popover__title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--db-text-tertiary);
+}
+.db-tone-popover__hint {
+  font-size: 11.5px;
+  color: var(--db-text-tertiary);
+  padding: 0 14px 10px;
+  line-height: 1.45;
+}
+.db-tone-popover__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 10px 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.db-tone-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--db-radius-md);
+  border: 1.5px solid transparent;
+  background: var(--db-surface-sunken);
+  color: var(--db-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--db-fast) var(--db-ease), border-color var(--db-fast) var(--db-ease),
+    transform var(--db-fast) var(--db-ease-snap);
+}
+.db-tone-option:hover {
+  background: var(--db-accent-soft);
+  transform: translateY(-1px);
+}
+.db-tone-option[data-selected="true"] {
+  background: rgba(var(--db-accent-rgb), 0.12);
+  border-color: var(--db-accent);
+  color: var(--db-accent);
+}
+.db-tone-option__emoji { font-size: 15px; line-height: 1; flex-shrink: 0; }
+.db-tone-option__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-tone-option__remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--db-text-tertiary);
+  font-size: 11px;
+  transition: background var(--db-fast) var(--db-ease), color var(--db-fast) var(--db-ease);
+}
+.db-tone-option__remove:hover { background: var(--db-danger); color: #fff; }
+
+.db-tone-popover__footer {
+  border-top: 1px solid var(--db-border-soft);
+  padding: 8px 10px;
+}
+.db-tone-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.db-tone-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  border-radius: var(--db-radius-md);
+  border: 1.5px dashed var(--db-border-strong);
+  background: transparent;
+  color: var(--db-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--db-fast) var(--db-ease), border-color var(--db-fast) var(--db-ease), color var(--db-fast) var(--db-ease);
+}
+.db-tone-add-btn:hover {
+  background: var(--db-accent-soft);
+  border-color: var(--db-accent);
+  color: var(--db-accent);
+}
+.db-tone-add-input {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: var(--db-radius-md);
+  border: 1.5px solid var(--db-accent);
+  background: var(--db-surface);
+  color: var(--db-text);
+  font-size: 12.5px;
+  font-family: var(--db-font);
+  padding: 0 12px;
+  outline: none;
+}
+
+/* ==========================================================================
+   Bookmarks (launcher, badge, panel, list rows)
+   ========================================================================== */
+
+#deepblue-bookmark-launcher button {
+  background: var(--db-surface) !important;
+  border-color: var(--db-border) !important;
+  color: var(--db-accent) !important;
+  box-shadow: var(--db-shadow-md) !important;
+}
+#deepblue-bookmark-panel {
+  background: var(--db-surface) !important;
+  border-color: var(--db-border) !important;
+  box-shadow: var(--db-shadow-lg) !important;
+  animation: db-pop-in 170ms var(--db-ease-snap);
+  backdrop-filter: var(--db-blur);
+  -webkit-backdrop-filter: var(--db-blur);
+}
+#deepblue-bookmark-panel > div:first-child {
+  border-color: var(--db-border-soft) !important;
+}
+#deepblue-bookmark-panel span { color: var(--db-text); }
+.deepblue-bookmark-hover { background: var(--db-accent-soft) !important; }
+.deepblue-bookmark-btn { color: var(--db-text-tertiary) !important; }
+.deepblue-bookmark-btn--pop { animation: db-glow-pulse 0.5s ease; }
+
+/* ==========================================================================
+   Folders (sidebar section, rows, context menu)
+   ========================================================================== */
+
+#deepblue-folder-section { border-color: var(--db-border-soft) !important; }
+.deepblue-folder-row,
+.deepblue-folder-head { color: var(--db-text) !important; }
+.deepblue-folder-row:hover,
+.deepblue-folder-head:hover { background: var(--db-surface-hover) !important; }
+#deepblue-folder-menu {
+  background: var(--db-surface) !important;
+  border-color: var(--db-border) !important;
+  box-shadow: var(--db-shadow-lg) !important;
+  animation: db-pop-in 150ms var(--db-ease-snap);
+}
+#deepblue-folder-menu button:hover { background: var(--db-surface-hover) !important; }
+.deepblue-add-to-folder-btn { color: var(--db-text-tertiary) !important; }
+.deepblue-add-to-folder-btn:hover { color: var(--db-accent) !important; }
+
+/* ==========================================================================
+   Download menu
+   ========================================================================== */
+
+.deepblue-download-menu {
+  animation: db-pop-in 150ms var(--db-ease-snap);
+  backdrop-filter: var(--db-blur);
+  -webkit-backdrop-filter: var(--db-blur);
+}
+
+/* ==========================================================================
+   Prompt library panel
+   ========================================================================== */
+
+.deepblue-prompt-panel {
+  animation: db-pop-in 170ms var(--db-ease-snap);
+  backdrop-filter: var(--db-blur);
+  -webkit-backdrop-filter: var(--db-blur);
+}
+
+/* ==========================================================================
+   Quick-actions toast + loading overlay
+   ========================================================================== */
+
+.deepblue-qa-toast { animation: db-rise-in 180ms var(--db-ease) !important; }

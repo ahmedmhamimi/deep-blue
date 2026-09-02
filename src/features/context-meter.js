@@ -47,18 +47,18 @@ const ContextMeter = {
     gap: 6px;
     font-size: 11px;
     font-weight: 500;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: #8e8e93;
+    font-family: var(--db-font);
+    color: var(--db-text-secondary);
     user-select: none;
     margin-left: 8px;
     padding: 4px 9px;
-    border-radius: 999px;
-    border: 1px solid #e9ecf0;
+    border-radius: var(--db-radius-pill);
+    border: 1px solid var(--db-border);
     vertical-align: middle;
     `;
     wrap.innerHTML = `
-    <div style="width: 54px; height: 5px; border-radius: 3px; background: #e9ecf0; overflow: hidden; flex-shrink: 0;">
-    <div class="deepblue-context-fill" style="height: 100%; width: 0%; background: #3964fe; transition: width 200ms ease, background-color 200ms ease;"></div>
+    <div style="width: 54px; height: 5px; border-radius: 3px; background: var(--db-border-soft); overflow: hidden; flex-shrink: 0;">
+    <div class="deepblue-context-fill" style="height: 100%; width: 0%; background: var(--db-accent); transition: width 200ms ease, background-color 200ms ease;"></div>
     </div>
     <span class="deepblue-context-label">0%</span>
     `;
@@ -85,7 +85,8 @@ const ContextMeter = {
       const label = el.querySelector('.deepblue-context-label');
       if (fill) {
         fill.style.width = `${pct.toFixed(1)}%`;
-        fill.style.background = pct > 90 ? '#ff6b6b' : pct > 70 ? '#feca57' : '#3964fe';
+        fill.style.background =
+          pct > 90 ? 'var(--db-danger)' : pct > 70 ? 'var(--db-warn)' : 'var(--db-accent)';
       }
       if (label) {
         label.textContent = pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`;

@@ -443,10 +443,10 @@ const PromptLibrary = {
       position: fixed;
       width: 340px;
       max-height: 460px;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
+      background: var(--db-surface);
+      border: 1px solid var(--db-border);
       border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      box-shadow: var(--db-shadow-lg);
       z-index: 1000000;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
@@ -455,64 +455,64 @@ const PromptLibrary = {
     }
     .deepblue-prompt-panel__header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; border-bottom: 1px solid #f0f1f4; flex-shrink: 0;
+      padding: 10px 12px; border-bottom: 1px solid var(--db-surface-hover); flex-shrink: 0;
     }
-    .deepblue-prompt-panel__title { font-size: 13px; font-weight: 700; color: #1d1d1f; }
+    .deepblue-prompt-panel__title { font-size: 13px; font-weight: 700; color: var(--db-text); }
     .deepblue-prompt-panel__close {
-      border: none; background: none; cursor: pointer; color: #8e8e93;
+      border: none; background: none; cursor: pointer; color: var(--db-text-secondary);
       font-size: 16px; line-height: 1; padding: 2px;
     }
-    .deepblue-prompt-panel__search-wrap { padding: 8px 12px; flex-shrink: 0; border-bottom: 1px solid #f5f6f8; }
+    .deepblue-prompt-panel__search-wrap { padding: 8px 12px; flex-shrink: 0; border-bottom: 1px solid var(--db-surface-sunken); }
     .deepblue-prompt-panel__search {
       width: 100%; box-sizing: border-box; font-size: 12.5px; font-family: inherit;
-      border: 1.5px solid #e5e7eb; border-radius: 9px; padding: 6px 10px; outline: none;
+      border: 1.5px solid var(--db-border); border-radius: 9px; padding: 6px 10px; outline: none;
     }
-    .deepblue-prompt-panel__search:focus { border-color: #3964fe; }
+    .deepblue-prompt-panel__search:focus { border-color: var(--db-accent); }
     .deepblue-prompt-panel__list { overflow-y: auto; flex: 1 1 auto; min-height: 60px; }
     .deepblue-prompt-panel__empty {
-      padding: 24px 16px; text-align: center; color: #8e8e93; font-size: 12.5px; line-height: 1.5;
+      padding: 24px 16px; text-align: center; color: var(--db-text-secondary); font-size: 12.5px; line-height: 1.5;
     }
     .deepblue-prompt-panel__row {
       display: flex; align-items: center; gap: 8px;
-      padding: 9px 12px; border-bottom: 1px solid #f5f6f8; cursor: pointer;
+      padding: 9px 12px; border-bottom: 1px solid var(--db-surface-sunken); cursor: pointer;
       transition: background 0.12s ease;
     }
-    .deepblue-prompt-panel__row:hover { background: #f7f8fa; }
+    .deepblue-prompt-panel__row:hover { background: var(--db-surface-hover); }
     .deepblue-prompt-panel__row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .deepblue-prompt-panel__row-title { font-size: 12.5px; font-weight: 700; color: #1d1d1f; }
+    .deepblue-prompt-panel__row-title { font-size: 12.5px; font-weight: 700; color: var(--db-text); }
     .deepblue-prompt-panel__row-snippet {
-      font-size: 11.5px; color: #8e8e93; line-height: 1.35;
+      font-size: 11.5px; color: var(--db-text-secondary); line-height: 1.35;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .deepblue-prompt-panel__row-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
     .deepblue-prompt-panel__row-action {
       display: flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; border-radius: 6px; border: none; background: none;
-      color: #8e8e93; cursor: pointer; padding: 0; font-size: 14px; line-height: 1;
+      color: var(--db-text-secondary); cursor: pointer; padding: 0; font-size: 14px; line-height: 1;
       transition: background 0.12s ease, color 0.12s ease;
     }
-    .deepblue-prompt-panel__row-action:hover { background: #eef1ff; color: #3964fe; }
-    .deepblue-prompt-panel__row-action--danger:hover { background: #fef2f2; color: #ef4444; }
-    .deepblue-prompt-panel__footer { padding: 8px 12px; border-top: 1px solid #f0f1f4; flex-shrink: 0; }
+    .deepblue-prompt-panel__row-action:hover { background: var(--db-accent-soft); color: var(--db-accent); }
+    .deepblue-prompt-panel__row-action--danger:hover { background: var(--db-danger-soft); color: var(--db-danger); }
+    .deepblue-prompt-panel__footer { padding: 8px 12px; border-top: 1px solid var(--db-surface-hover); flex-shrink: 0; }
     .deepblue-prompt-panel__add-btn {
       display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
-      border: 1.5px dashed #c9ccd3; background: none; border-radius: 9px; padding: 7px 0;
-      color: #6c6c72; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      border: 1.5px dashed var(--db-border-strong); background: none; border-radius: 9px; padding: 7px 0;
+      color: var(--db-text-secondary); font-size: 12.5px; font-weight: 600; cursor: pointer;
       transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
-    .deepblue-prompt-panel__add-btn:hover { background: #eef1ff; color: #3964fe; border-color: #3964fe; }
-    .deepblue-prompt-panel__form { padding: 10px 12px; border-bottom: 1px solid #f5f6f8; display: flex; flex-direction: column; gap: 6px; }
+    .deepblue-prompt-panel__add-btn:hover { background: var(--db-accent-soft); color: var(--db-accent); border-color: var(--db-accent); }
+    .deepblue-prompt-panel__form { padding: 10px 12px; border-bottom: 1px solid var(--db-surface-sunken); display: flex; flex-direction: column; gap: 6px; }
     .deepblue-prompt-panel__form-title, .deepblue-prompt-panel__form-content {
       width: 100%; box-sizing: border-box; font-size: 12.5px; font-family: inherit;
-      border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 6px 9px; outline: none; resize: vertical;
+      border: 1.5px solid var(--db-border); border-radius: 8px; padding: 6px 9px; outline: none; resize: vertical;
     }
-    .deepblue-prompt-panel__form-title:focus, .deepblue-prompt-panel__form-content:focus { border-color: #3964fe; }
+    .deepblue-prompt-panel__form-title:focus, .deepblue-prompt-panel__form-content:focus { border-color: var(--db-accent); }
     .deepblue-prompt-panel__form-actions { display: flex; justify-content: flex-end; gap: 6px; }
     .deepblue-prompt-panel__form-btn {
-      border: 1.5px solid #e5e7eb; background: #ffffff; border-radius: 8px;
-      padding: 5px 12px; font-size: 12px; font-weight: 600; color: #6c6c72; cursor: pointer;
+      border: 1.5px solid var(--db-border); background: var(--db-surface); border-radius: 8px;
+      padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--db-text-secondary); cursor: pointer;
     }
-    .deepblue-prompt-panel__form-btn--primary { background: #3964fe; border-color: #3964fe; color: #ffffff; }
+    .deepblue-prompt-panel__form-btn--primary { background: var(--db-accent); border-color: var(--db-accent); color: var(--db-surface); }
     `;
     document.head.appendChild(style);
   },

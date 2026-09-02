@@ -92,7 +92,11 @@ const CONFIG = {
   charCounter: {
     warnAt: 500,
     dangerAt: 1000,
-    colors: { normal: '#8e8e93', warn: '#feca57', danger: '#ff6b6b' },
+    colors: {
+      normal: 'var(--db-text-secondary)',
+      warn: 'var(--db-warn)',
+      danger: 'var(--db-danger)',
+    },
   },
   tokenCounter: {
     latinCharsPerToken: 4,

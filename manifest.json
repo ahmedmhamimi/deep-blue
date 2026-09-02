@@ -9,11 +9,13 @@
   "content_scripts": [
     {
       "matches": ["https://chat.deepseek.com/*"],
+      "css": ["src/theme.css"],
       "js": [
         "vendor/html2canvas.min.js",
         "vendor/jspdf.umd.min.js",
 
         "src/config.js",
+        "src/theme.js",
         "src/utils.js",
         "src/store.js",
         "src/dom.js",

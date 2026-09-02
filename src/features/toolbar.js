@@ -219,12 +219,13 @@ const Toolbar = {
     font-weight: 700;
     color: ${CONFIG.charCounter.colors.normal};
     padding: 0 6px 0 4px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--db-font);
     user-select: none;
     flex-shrink: 0;
     height: 34px;
     letter-spacing: 0.2px;
     margin-right: 4px;
+    transition: color var(--db-base) var(--db-ease);
     `;
     counter.innerHTML = `<span id="${CONFIG.ids.countSpan}">0</span><span>characters</span>`;
     counter.title = 'Character count';

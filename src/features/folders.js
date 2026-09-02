@@ -129,7 +129,7 @@ const Folders = {
  padding: 2px 4px 4px;
  `;
     header.innerHTML = `
- <span style="font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.6px;">Folders</span>
+ <span style="font-size: 11px; font-weight: 700; color: var(--db-text-secondary); text-transform: uppercase; letter-spacing: 0.6px;">Folders</span>
  `;
 
     const addBtn = document.createElement('button');
@@ -139,7 +139,7 @@ const Folders = {
  background: none;
  border: none;
  cursor: pointer;
- color: #6c6c72;
+ color: var(--db-text-secondary);
  display: flex;
  align-items: center;
  justify-content: center;
@@ -152,12 +152,12 @@ const Folders = {
  </svg>
  `;
     addBtn.addEventListener('mouseenter', () => {
-      addBtn.style.background = '#e4e7ed';
-      addBtn.style.color = '#1d1d1f';
+      addBtn.style.background = 'var(--db-surface-hover)';
+      addBtn.style.color = 'var(--db-text)';
     });
     addBtn.addEventListener('mouseleave', () => {
       addBtn.style.background = 'none';
-      addBtn.style.color = '#6c6c72';
+      addBtn.style.color = 'var(--db-text-secondary)';
     });
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -195,7 +195,7 @@ const Folders = {
     if (!folders.length) {
       const empty = document.createElement('div');
       empty.textContent = 'No folders yet — click + to add one';
-      empty.style.cssText = 'font-size: 12px; color: #8e8e93; padding: 4px 6px 6px;';
+      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 4px 6px 6px;';
       list.appendChild(empty);
       return;
     }
@@ -227,11 +227,11 @@ const Folders = {
  border-radius: 8px;
  cursor: pointer;
  font-size: 13px;
- color: #1d1d1f;
+ color: var(--db-text);
  user-select: none;
  `;
     head.addEventListener('mouseenter', () => {
-      head.style.background = '#f0f2f5';
+      head.style.background = 'var(--db-surface-sunken)';
     });
     head.addEventListener('mouseleave', () => {
       head.style.background = 'none';
@@ -239,14 +239,14 @@ const Folders = {
 
     head.innerHTML = `
  <svg class="deepblue-folder-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
- style="flex-shrink:0; transition: transform 0.15s ease; transform: rotate(${isOpen ? '90deg' : '0deg'}); color:#8e8e93;">
+ style="flex-shrink:0; transition: transform 0.15s ease; transform: rotate(${isOpen ? '90deg' : '0deg'}); color:var(--db-text-secondary);">
  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
  </svg>
  <span class="deepblue-folder-dot" style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
  <span class="deepblue-folder-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
- <span style="font-size:11px; color:#8e8e93; flex-shrink:0;">${count}</span>
+ <span style="font-size:11px; color:var(--db-text-secondary); flex-shrink:0;">${count}</span>
  <button class="deepblue-folder-more" title="Folder options" style="
- background:none; border:none; cursor:pointer; color:#8e8e93; display:flex;
+ background:none; border:none; cursor:pointer; color:var(--db-text-secondary); display:flex;
  align-items:center; justify-content:center; padding:2px 4px; border-radius:6px; flex-shrink:0;
  ">
  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -271,7 +271,7 @@ const Folders = {
     head.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      head.style.background = '#e4ecff';
+      head.style.background = 'var(--db-accent-soft)';
       head.style.outline = `1.5px dashed ${folder.color}`;
     });
     head.addEventListener('dragleave', () => {
@@ -300,7 +300,7 @@ const Folders = {
       if (!convIds.length) {
         const empty = document.createElement('div');
         empty.textContent = 'Empty — drag a chat here';
-        empty.style.cssText = 'font-size: 11.5px; color: #8e8e93; padding: 4px 6px 6px;';
+        empty.style.cssText = 'font-size: 11.5px; color: var(--db-text-secondary); padding: 4px 6px 6px;';
         body.appendChild(empty);
       } else {
         convIds.forEach((convId) => {
@@ -329,10 +329,10 @@ const Folders = {
  border-radius: 8px;
  cursor: pointer;
  font-size: 12.5px;
- color: #4b5563;
+ color: var(--db-text-secondary);
  `;
     row.addEventListener('mouseenter', () => {
-      row.style.background = '#f0f2f5';
+      row.style.background = 'var(--db-surface-sunken)';
     });
     row.addEventListener('mouseleave', () => {
       row.style.background = 'none';
@@ -341,7 +341,7 @@ const Folders = {
     row.innerHTML = `
  <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(title)}</span>
  <button title="Remove from folder" style="
- background:none; border:none; cursor:pointer; color:#8e8e93; opacity:0;
+ background:none; border:none; cursor:pointer; color:var(--db-text-secondary); opacity:0;
  display:flex; align-items:center; justify-content:center; padding:2px; border-radius:6px; flex-shrink:0;
  ">
  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -397,10 +397,10 @@ const Folders = {
     menu.style.cssText = `
  position: fixed;
  z-index: 999999;
- background: #ffffff;
- border: 1px solid #e5e7eb;
+ background: var(--db-surface);
+ border: 1px solid var(--db-border);
  border-radius: 10px;
- box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+ box-shadow: var(--db-shadow-lg);
  padding: 8px;
  width: 190px;
  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -413,7 +413,7 @@ const Folders = {
     const renameBtn = document.createElement('button');
     renameBtn.textContent = 'Rename';
     renameBtn.style.cssText = this._menuItemStyle();
-    renameBtn.addEventListener('mouseenter', () => (renameBtn.style.background = '#f0f2f5'));
+    renameBtn.addEventListener('mouseenter', () => (renameBtn.style.background = 'var(--db-surface-sunken)'));
     renameBtn.addEventListener('mouseleave', () => (renameBtn.style.background = 'none'));
     renameBtn.addEventListener('click', () => {
       menu.remove();
@@ -425,7 +425,7 @@ const Folders = {
     const colorLabel = document.createElement('div');
     colorLabel.textContent = 'Color';
     colorLabel.style.cssText =
-      'font-size: 11px; color: #8e8e93; padding: 6px 6px 4px; font-weight: 600;';
+      'font-size: 11px; color: var(--db-text-secondary); padding: 6px 6px 4px; font-weight: 600;';
     menu.appendChild(colorLabel);
 
     const swatches = document.createElement('div');
@@ -435,7 +435,7 @@ const Folders = {
       sw.title = c.name;
       sw.style.cssText = `
    width: 18px; height: 18px; border-radius: 50%; background: ${c.hex}; cursor: pointer;
-   border: 2px solid ${folder.color === c.hex ? '#1d1d1f' : 'transparent'};
+   border: 2px solid ${folder.color === c.hex ? 'var(--db-text)' : 'transparent'};
    `;
       sw.addEventListener('click', () => {
         this._recolorFolder(folder.id, c.hex);
@@ -447,13 +447,13 @@ const Folders = {
     menu.appendChild(swatches);
 
     const divider = document.createElement('div');
-    divider.style.cssText = 'height: 1px; background: #e9ecf0; margin: 4px 0;';
+    divider.style.cssText = 'height: 1px; background: var(--db-border-soft); margin: 4px 0;';
     menu.appendChild(divider);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete folder';
-    deleteBtn.style.cssText = this._menuItemStyle() + 'color:#dc2626;';
-    deleteBtn.addEventListener('mouseenter', () => (deleteBtn.style.background = '#fee2e2'));
+    deleteBtn.style.cssText = this._menuItemStyle() + 'color:var(--db-danger);';
+    deleteBtn.addEventListener('mouseenter', () => (deleteBtn.style.background = 'var(--db-danger-soft)'));
     deleteBtn.addEventListener('mouseleave', () => (deleteBtn.style.background = 'none'));
     deleteBtn.addEventListener('click', () => {
       menu.remove();
@@ -468,7 +468,7 @@ const Folders = {
   _menuItemStyle() {
     return `
  display: block; width: 100%; text-align: left; background: none; border: none;
- cursor: pointer; font-size: 13px; color: #1d1d1f; padding: 6px 8px; border-radius: 6px;
+ cursor: pointer; font-size: 13px; color: var(--db-text); padding: 6px 8px; border-radius: 6px;
  font-family: inherit;
  `;
   },
@@ -484,7 +484,7 @@ const Folders = {
     input.type = 'text';
     input.value = folder.name;
     input.style.cssText = `
- flex: 1; font-size: 13px; border: 1px solid #3964fe; border-radius: 4px;
+ flex: 1; font-size: 13px; border: 1px solid var(--db-accent); border-radius: 4px;
  padding: 1px 4px; font-family: inherit; outline: none; width: 100%;
  `;
 
@@ -550,7 +550,7 @@ const Folders = {
  transform: translateY(-50%);
  display: flex; align-items: center; justify-content: center;
  width: 20px; height: 20px; border-radius: 6px; cursor: pointer;
- color: #8e8e93; flex-shrink: 0; opacity: 0; transition: opacity 0.15s ease;
+ color: var(--db-text-secondary); flex-shrink: 0; opacity: 0; transition: opacity 0.15s ease;
  background: inherit;
  z-index: 2;
  `;
@@ -560,12 +560,12 @@ const Folders = {
  </svg>
  `;
     btn.addEventListener('mouseenter', () => {
-      btn.style.background = '#e4e7ed';
-      btn.style.color = '#1d1d1f';
+      btn.style.background = 'var(--db-surface-hover)';
+      btn.style.color = 'var(--db-text)';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.background = 'none';
-      btn.style.color = '#8e8e93';
+      btn.style.color = 'var(--db-text-secondary)';
     });
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -596,10 +596,10 @@ const Folders = {
     menu.style.cssText = `
  position: fixed;
  z-index: 999999;
- background: #ffffff;
- border: 1px solid #e5e7eb;
+ background: var(--db-surface);
+ border: 1px solid var(--db-border);
  border-radius: 10px;
- box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+ box-shadow: var(--db-shadow-lg);
  padding: 6px;
  width: 190px;
  max-height: 260px;
@@ -614,7 +614,7 @@ const Folders = {
     if (!folders.length) {
       const empty = document.createElement('div');
       empty.textContent = 'No folders yet. Click + above the search bar to create one.';
-      empty.style.cssText = 'font-size: 12px; color: #8e8e93; padding: 8px;';
+      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 8px;';
       menu.appendChild(empty);
     } else {
       folders.forEach((folder) => {
@@ -624,9 +624,9 @@ const Folders = {
         item.innerHTML = `
      <span style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
      <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
-     ${isCurrent ? '<span style="color:#3964fe; font-size:12px;">✓</span>' : ''}
+     ${isCurrent ? '<span style="color:var(--db-accent); font-size:12px;">✓</span>' : ''}
      `;
-        item.addEventListener('mouseenter', () => (item.style.background = '#f0f2f5'));
+        item.addEventListener('mouseenter', () => (item.style.background = 'var(--db-surface-sunken)'));
         item.addEventListener('mouseleave', () => (item.style.background = 'none'));
         item.addEventListener('click', () => {
           this._assign(convId, isCurrent ? null : folder.id);
