@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "DeepBlue for DeepSeek: Search, Folders & Export",
+    "description": "The extension's name, shown in the Chrome Web Store, install dialog, and chrome://extensions."
+  },
+  "extDescription": {
+    "message": "Supercharge DeepSeek chat: search, folders, bookmarks, tone picker, token/context counters & PDF/JSON export.",
+    "description": "Short description (max 132 characters) shown on chrome://extensions and in some Chrome Web Store surfaces."
+  }
+}

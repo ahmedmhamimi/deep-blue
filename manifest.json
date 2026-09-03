@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "DeepBlue for DeepSeek: Search, Folders & Export",
+  "default_locale": "en",
+  "name": "__MSG_extName__",
   "version": "1.0",
-  "description": "Supercharge DeepSeek chat: search, folders, bookmarks, tone picker, token/context counters & PDF/JSON export.",
+  "description": "__MSG_extDescription__",
   "host_permissions": [
     "https://chat.deepseek.com/*"
   ],
