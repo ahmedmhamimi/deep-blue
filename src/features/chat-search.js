@@ -115,7 +115,7 @@ const ChatSearch = {
     <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
     <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </svg>
-    <input id="${CONFIG.ids.searchInput}" type="text" placeholder="Search in conversation..." style="
+    <input id="${CONFIG.ids.searchInput}" type="text" placeholder="${Lang.t('search.chat.placeholder')}" style="
     border: none;
     background: transparent;
     outline: none;
@@ -151,7 +151,7 @@ const ChatSearch = {
     line-height: 1;
     transition: all 0.15s ease;
     opacity: 0.5;
-    " title="Previous match (↑)">
+    " data-db-tip="${Lang.t('search.prev.title')}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M18 15L12 9L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
@@ -170,7 +170,7 @@ const ChatSearch = {
     line-height: 1;
     transition: all 0.15s ease;
     opacity: 0.5;
-    " title="Next match (↓)">
+    " data-db-tip="${Lang.t('search.next.title')}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
@@ -191,7 +191,7 @@ const ChatSearch = {
     transition: all 0.15s ease;
     opacity: 0;
     pointer-events: none;
-    " title="Clear search">
+    " data-db-tip="${Lang.t('search.clear.title')}">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </svg>

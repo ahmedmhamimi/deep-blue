@@ -143,7 +143,7 @@ const QuickActions = {
     const menuWrap = freshLink.querySelector(CONFIG.selectors.sidebarConversationMenuWrap);
     const menuBtn = freshLink.querySelector(CONFIG.selectors.sidebarConversationMenuBtn);
     if (!menuBtn) {
-      this._toast('Couldn\u2019t find the conversation menu \u2013 try the \u2022\u2022\u2022 button.');
+      this._toast(Lang.t('qa.menuNotFound'));
       return;
     }
 
@@ -188,7 +188,7 @@ const QuickActions = {
       if (triesLeft > 0) {
         setTimeout(() => attempt(triesLeft - 1), 60);
       } else {
-        this._toast('Rename menu didn\u2019t open \u2013 try the \u2022\u2022\u2022 button.');
+        this._toast(Lang.t('qa.renameNotFound'));
       }
     };
 
@@ -244,7 +244,7 @@ const QuickActions = {
 
     const editBtn = this._findEditButton(message);
     if (!editBtn) {
-      this._toast('Couldn\u2019t find the edit button for this message.');
+      this._toast(Lang.t('qa.editNotFound'));
       return;
     }
 

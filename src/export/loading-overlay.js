@@ -37,7 +37,7 @@ const LoadingOverlay = {
       this._setState('loading');
       this._el.innerHTML = `
       <span class="deepblue-loading-overlay__icon">${this._spinnerSvg()}</span>
-      <span class="deepblue-loading-overlay__text">${escapeHtml(text || 'Working\u2026')}</span>
+      <span class="deepblue-loading-overlay__text">${escapeHtml(text || Lang.t('loading.working'))}</span>
       `;
       return;
     }
@@ -51,7 +51,7 @@ const LoadingOverlay = {
     el.setAttribute('aria-live', 'polite');
     el.innerHTML = `
     <span class="deepblue-loading-overlay__icon">${this._spinnerSvg()}</span>
-    <span class="deepblue-loading-overlay__text">${escapeHtml(text || 'Working\u2026')}</span>
+    <span class="deepblue-loading-overlay__text">${escapeHtml(text || Lang.t('loading.working'))}</span>
     `;
     document.body.appendChild(el);
     this._el = el;
@@ -70,7 +70,7 @@ const LoadingOverlay = {
     this._el.innerHTML = `
     <span class="deepblue-loading-overlay__icon">${success ? this._checkSvg() : this._errorSvg()}</span>
     <span class="deepblue-loading-overlay__text">${escapeHtml(
-      text || (success ? 'Done!' : 'Something went wrong')
+      text || (success ? Lang.t('loading.done') : Lang.t('loading.error'))
     )}</span>
     `;
     this._hideTimer = setTimeout(() => this.hide(), success ? 1400 : 2200);

@@ -92,10 +92,15 @@ const ContextMeter = {
         label.textContent = pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`;
       }
 
-      el.title = isExact
-        ? `${tokens.toLocaleString()} / ${limit.toLocaleString()} tokens (exact, reported by DeepSeek)`
-        : `~${tokens.toLocaleString()} / ${limit.toLocaleString()} tokens estimated\n` +
-          `Estimate only - waiting on the first response to get an exact count from DeepSeek.`;
+      el.dataset.dbTip = isExact
+        ? Lang.t('contextMeter.title.exact', {
+            tokens: tokens.toLocaleString(),
+            limit: limit.toLocaleString(),
+          })
+        : Lang.t('contextMeter.title.estimate', {
+            tokens: tokens.toLocaleString(),
+            limit: limit.toLocaleString(),
+          });
     } catch (err) {
       console.debug(`${BRAND_NAME}: context meter error`, err);
     }

@@ -23,28 +23,28 @@ const PdfExport = {
     if (PdfExport._running) return;
     PdfExport._running = true;
     Toolbar.setExportButtonLoading(true);
-    LoadingOverlay.show('Generating your PDF\u2026');
+    LoadingOverlay.show(Lang.t('loading.pdf.whole'));
 
     try {
       if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
-        alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
-        LoadingOverlay.finish(false, 'Could not load the PDF engine');
+        alert(Lang.t('pdf.engineLoadFailed'));
+        LoadingOverlay.finish(false, Lang.t('loading.pdf.engineFail'));
         return;
       }
 
       const conversation = Extractor.extract();
       if (!conversation || conversation.messages.length === 0) {
-        alert('No conversation to export. Please start a chat first.');
+        alert(Lang.t('download.noConversation'));
         LoadingOverlay.hide();
         return;
       }
 
       await PdfExport._generate(conversation);
-      LoadingOverlay.finish(true, 'PDF downloaded!');
+      LoadingOverlay.finish(true, Lang.t('loading.pdf.downloaded'));
     } catch (err) {
       console.error(`${BRAND_NAME}: export failed`, err);
-      alert('Failed to export conversation. Please try again.');
-      LoadingOverlay.finish(false, 'PDF export failed');
+      alert(Lang.t('download.failed'));
+      LoadingOverlay.finish(false, Lang.t('loading.pdf.failed'));
     } finally {
       Toolbar.setExportButtonLoading(false);
       PdfExport._running = false;
@@ -59,26 +59,26 @@ const PdfExport = {
   // node at the same time.
   async exportMessages(conversation, filename) {
     if (PdfExport._running) {
-      alert('An export is already in progress. Please wait for it to finish.');
+      alert(Lang.t('pdf.inProgress'));
       return false;
     }
     if (!window.jspdf?.jsPDF || typeof window.html2canvas !== 'function') {
-      alert(`${BRAND_NAME} could not load its PDF engine. Try reloading the page.`);
+      alert(Lang.t('pdf.engineLoadFailed'));
       return false;
     }
     if (!conversation || conversation.messages.length === 0) {
-      alert('Nothing to export.');
+      alert(Lang.t('export.nothing'));
       return false;
     }
 
     PdfExport._running = true;
-    LoadingOverlay.show('Generating this response as a PDF\u2026');
+    LoadingOverlay.show(Lang.t('loading.pdf.message'));
     try {
       await PdfExport._generate(conversation, filename);
-      LoadingOverlay.finish(true, 'PDF downloaded!');
+      LoadingOverlay.finish(true, Lang.t('loading.pdf.downloaded'));
       return true;
     } catch (err) {
-      LoadingOverlay.finish(false, 'PDF export failed');
+      LoadingOverlay.finish(false, Lang.t('loading.pdf.failed'));
       throw err;
     } finally {
       PdfExport._running = false;

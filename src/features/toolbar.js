@@ -90,7 +90,7 @@ const Toolbar = {
       'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
     btn.style.cssText =
       '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
-    btn.title = `Download conversation (${BRAND_NAME})`;
+    btn.dataset.dbTip = Lang.t('toolbar.download.title');
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">
@@ -135,14 +135,14 @@ const Toolbar = {
     try {
       const conversation = Extractor.extract();
       if (!conversation || !conversation.messages.length) {
-        alert('No conversation to export. Please start a chat first.');
+        alert(Lang.t('download.noConversation'));
         return;
       }
       const baseFilename = sanitizeFilename(conversation.title);
       FormatExport.downloadAs(conversation, baseFilename, format);
     } catch (err) {
       console.error(`${BRAND_NAME}: download failed`, err);
-      alert('Failed to download conversation. Please try again.');
+      alert(Lang.t('download.failed'));
     }
   },
 
@@ -156,7 +156,7 @@ const Toolbar = {
       'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
     btn.style.cssText =
       '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
-    btn.title = 'Copy whole conversation without markdown';
+    btn.dataset.dbTip = Lang.t('toolbar.copy.title');
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">${this._copyIcon()}</div>`;
@@ -192,19 +192,19 @@ const Toolbar = {
   // state for a moment, then restores exactly what was there before -
   // works for either the export or copy-conversation button since both
   // share the same "background + icon" inner markup.
-  flashToolbarButton(btn, success, failTitle) {
+  flashToolbarButton(btn, success, failTip) {
     if (!btn) return;
     const originalHTML = btn.innerHTML;
-    const originalTitle = btn.title;
+    const originalTip = btn.dataset.dbTip;
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">${
       success ? this._checkIcon() : this._copyIcon()
     }</div>`;
-    btn.title = success ? 'Copied!' : failTitle || 'Could not copy. Please try again.';
+    btn.dataset.dbTip = success ? Lang.t('toolbar.copy.copied') : failTip || Lang.t('toolbar.copy.failed');
     setTimeout(() => {
       btn.innerHTML = originalHTML;
-      btn.title = originalTitle;
+      btn.dataset.dbTip = originalTip;
     }, 1200);
   },
 
@@ -227,8 +227,10 @@ const Toolbar = {
     margin-right: 4px;
     transition: color var(--db-base) var(--db-ease);
     `;
-    counter.innerHTML = `<span id="${CONFIG.ids.countSpan}">0</span><span>characters</span>`;
-    counter.title = 'Character count';
+    counter.innerHTML = `<span id="${CONFIG.ids.countSpan}">0</span><span>${Lang.t(
+      'toolbar.charCounter.unit'
+    )}</span>`;
+    counter.dataset.dbTip = Lang.t('toolbar.charCounter.title');
     return counter;
   },
 
@@ -239,10 +241,10 @@ const Toolbar = {
     btn.style.pointerEvents = isLoading ? 'none' : 'auto';
     btn.setAttribute('aria-busy', String(isLoading));
     if (isLoading) {
-      btn.dataset.originalTitle = btn.title;
-      btn.title = 'Generating PDF...';
-    } else if (btn.dataset.originalTitle) {
-      btn.title = btn.dataset.originalTitle;
+      btn.dataset.originalTip = btn.dataset.dbTip;
+      btn.dataset.dbTip = Lang.t('toolbar.download.generating');
+    } else if (btn.dataset.originalTip) {
+      btn.dataset.dbTip = btn.dataset.originalTip;
     }
   },
 

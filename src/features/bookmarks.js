@@ -177,7 +177,7 @@ const Bookmarks = {
 
   _paintButton(btn, bookmarked) {
     btn.dataset.bookmarked = bookmarked ? 'true' : 'false';
-    btn.title = bookmarked ? 'Remove bookmark' : 'Bookmark this message';
+    btn.dataset.dbTip = bookmarked ? Lang.t('bookmarks.remove.title') : Lang.t('bookmarks.add.title');
     btn.setAttribute('aria-label', btn.title);
     btn.innerHTML = bookmarked
       ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg"><path d="M6 3a1 1 0 0 0-1 1v17l7-4.5 7 4.5V4a1 1 0 0 0-1-1H6z"/></svg>`
@@ -459,7 +459,7 @@ const Bookmarks = {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.title = 'Bookmarked messages in this chat';
+    btn.dataset.dbTip = Lang.t('bookmarks.launcher.title');
     btn.style.cssText = `
     position: relative;
     display: flex; align-items: center; justify-content: center;
@@ -546,10 +546,10 @@ const Bookmarks = {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 12px; border-bottom: 1px solid var(--db-surface-hover); flex-shrink: 0;
     `;
-    header.innerHTML = `<span style="font-size:13px; font-weight:700; color:var(--db-text);">Bookmarks in this chat</span>`;
+    header.innerHTML = `<span style="font-size:13px; font-weight:700; color:var(--db-text);">${Lang.t('bookmarks.panel.title')}</span>`;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.title = 'Close';
+    closeBtn.dataset.dbTip = Lang.t('bookmarks.panel.close');
     closeBtn.style.cssText =
       'border:none; background:none; cursor:pointer; color:var(--db-text-secondary); font-size:16px; line-height:1; padding:2px;';
     closeBtn.textContent = '\u00d7';
@@ -588,8 +588,7 @@ const Bookmarks = {
       const empty = document.createElement('div');
       empty.style.cssText =
         'padding: 24px 16px; text-align:center; color:var(--db-text-secondary); font-size:12.5px; line-height:1.5;';
-      empty.textContent =
-        'No bookmarks yet. Hover a message and click the bookmark icon in its corner to save it here.';
+      empty.textContent = Lang.t('bookmarks.panel.empty');
       list.appendChild(empty);
       return;
     }
@@ -627,7 +626,7 @@ const Bookmarks = {
 
     const remove = document.createElement('button');
     remove.type = 'button';
-    remove.title = 'Remove bookmark';
+    remove.dataset.dbTip = Lang.t('bookmarks.remove.title');
     remove.style.cssText = `
     flex-shrink: 0; border: none; background: none; cursor: pointer; color: var(--db-border-strong);
     font-size: 15px; line-height: 1; padding: 0 2px;

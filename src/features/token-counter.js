@@ -88,34 +88,33 @@ const TokenCounter = {
  align-items: center;
  gap: 4px;
  font-size: 11px;
- font-weight: 500;
+ font-weight: 600;
  color: var(--db-text-secondary);
  padding: 0 6px;
- font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ font-family: var(--db-font);
  user-select: none;
  height: 28px;
  letter-spacing: 0.2px;
- opacity: 0.7;
- border-left: 1px solid var(--db-border-soft);
+ border-left: 1px solid var(--db-border);
  margin-left: 4px;
  padding-left: 10px;
  `;
 
     const timeLabel = GenerationTimer.format(elapsedSeconds);
-    badge.title = timeLabel
-      ? `Estimated tokens: ${tokenCount} \u00b7 Generated in ${timeLabel}`
-      : `Estimated tokens: ${tokenCount}`;
+    badge.dataset.dbTip = timeLabel
+      ? Lang.t('tokenCounter.title.withTime', { tokens: tokenCount, time: timeLabel })
+      : Lang.t('tokenCounter.title', { tokens: tokenCount });
 
     badge.innerHTML = `
- <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
+ <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.85;">
  <path d="M8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C12.42 16 16 12.42 16 8C16 3.58 12.42 0 8 0ZM8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C11.31 2 14 4.69 14 8C14 11.31 11.31 14 8 14Z" fill="currentColor"/>
  <path d="M8 4C7.45 4 7 4.45 7 5V8.5L9.2 10.7C9.6 11.1 10.2 11.1 10.6 10.7C11 10.3 11 9.7 10.6 9.3L9 7.7V5C9 4.45 8.55 4 8 4Z" fill="currentColor"/>
  </svg>
  <span>${tokenCount}</span>
- <span style="font-weight: 400; font-size: 10px; opacity: 0.7;">tokens</span>
+ <span style="font-weight: 500; font-size: 10px; opacity: 0.9;">${Lang.t('tokenCounter.unit')}</span>
  ${
    timeLabel
-     ? `<span style="opacity: 0.4;">&middot;</span>
+     ? `<span style="opacity: 0.6;">&middot;</span>
    <span>${escapeHtml(timeLabel)}</span>`
      : ''
  }

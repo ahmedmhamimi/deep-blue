@@ -25,6 +25,7 @@ function isOwnMutation(mutations) {
 
 function runScan() {
   Theme.sync();
+  Lang.sync();
   Toolbar.ensureInjected();
 
   // Every message-scanning feature below used to run its own independent
@@ -64,6 +65,7 @@ const observer = new MutationObserver((mutations) => {
 
 function start() {
   Theme.sync();
+  Tooltip.init();
   Bridge.listen();
   Bridge.inject();
   setTimeout(runScan, CONFIG.timing.initialScanDelayMs);

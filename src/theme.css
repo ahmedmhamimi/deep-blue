@@ -242,7 +242,6 @@ html[data-db-theme="dark"] {
 #deepblue-char-counter { color: var(--db-text-secondary); }
 
 .deepblue-token-counter {
-  color: var(--db-text-tertiary) !important;
   border-color: var(--db-border) !important;
 }
 
@@ -515,6 +514,39 @@ html[data-db-theme="dark"] {
   animation: db-pop-in 170ms var(--db-ease-snap);
   backdrop-filter: var(--db-blur);
   -webkit-backdrop-filter: var(--db-blur);
+}
+
+/* ==========================================================================
+   Tooltip (replaces native `title` for every DeepBlue control)
+   ========================================================================== */
+
+.db-tooltip {
+  position: fixed;
+  z-index: 1000002;
+  max-width: 240px;
+  background: var(--db-text);
+  color: var(--db-bg);
+  font-family: var(--db-font);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: var(--db-radius-sm);
+  box-shadow: var(--db-shadow-md);
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 120ms var(--db-ease), transform 120ms var(--db-ease);
+  will-change: transform, opacity;
+}
+.db-tooltip--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+html[data-db-theme="dark"] .db-tooltip {
+  background: var(--db-surface-raised);
+  color: var(--db-text);
+  border: 1px solid var(--db-border);
 }
 
 /* ==========================================================================

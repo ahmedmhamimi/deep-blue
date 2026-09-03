@@ -107,13 +107,24 @@ const ToneSelector = {
     this._rebuildPopoverGrid();
   },
 
+  // Preset tones (Friendly/Fun/...) show a localized label; custom tones
+  // are free text the person typed themselves, so their label is never
+  // translated - there's nothing to look up.
+  _labelFor(tone) {
+    if (tone.id === 'none') return Lang.t('tone.option.off');
+    const isPreset = CONFIG.tone.presets.some((p) => p.id === tone.id);
+    return isPreset ? Lang.t(`tone.preset.${tone.id}`) : tone.label;
+  },
+
   // -- the tag itself ------------------------------------------------------
 
   _tagText(tone) {
     if (tone.id === 'none') {
-      return 'Tone: Off (ignore any earlier tone instructions - back to your normal, default tone)';
+      return Lang.t('tone.tagOff');
     }
-    return `Tone: ${tone.label}${tone.emoji ? ' ' + tone.emoji : ''}`;
+    return Lang.t('tone.tag', {
+      label: `${this._labelFor(tone)}${tone.emoji ? ' ' + tone.emoji : ''}`,
+    });
   },
 
   // DeepSeek carries a stated tone forward through the rest of a
@@ -270,14 +281,15 @@ const ToneSelector = {
 
     const tone = this._selectedTone();
     const isActive = tone.id !== 'none';
+    const label = this._labelFor(tone);
     chip.dataset.active = String(isActive);
-    chip.title = isActive
-      ? `Tone: ${tone.label} \u2013 click to change`
-      : 'Response tone \u2013 off. Click to set one';
+    chip.dataset.dbTip = isActive
+      ? Lang.t('tone.chip.active.title', { label })
+      : Lang.t('tone.chip.off.title');
 
     chip.innerHTML = `
     <span class="db-tone-chip__icon">${tone.emoji ? tone.emoji : this._sparkleIcon()}</span>
-    <span>${isActive ? escapeHtml(tone.label) : 'Tone'}</span>
+    <span>${isActive ? escapeHtml(label) : Lang.t('tone.chip.label')}</span>
     <span class="db-tone-chip__chevron">${this._chevronIcon()}</span>
     `;
   },
@@ -298,12 +310,12 @@ const ToneSelector = {
 
     const head = document.createElement('div');
     head.className = 'db-tone-popover__head';
-    head.innerHTML = `<span class="db-tone-popover__title">Response tone</span>`;
+    head.innerHTML = `<span class="db-tone-popover__title">${Lang.t('tone.popover.title')}</span>`;
     popover.appendChild(head);
 
     const hint = document.createElement('div');
     hint.className = 'db-tone-popover__hint';
-    hint.textContent = 'Appended as a short, visible tag on your next message.';
+    hint.textContent = Lang.t('tone.popover.hint');
     popover.appendChild(hint);
 
     const grid = document.createElement('div');
@@ -396,17 +408,17 @@ const ToneSelector = {
 
   _buildOption(tone, isSelected) {
     const isCustom = !CONFIG.tone.presets.some((p) => p.id === tone.id);
+    const label = this._labelFor(tone);
 
     const option = document.createElement('div');
     option.className = 'db-tone-option';
     option.dataset.selected = String(isSelected);
     option.dataset.toneId = tone.id;
-    option.title =
+    option.dataset.dbTip =
       tone.id === 'none'
-        ? 'No tone tag - DeepSeek responds normally'
-        : `Appends "${this._tagText(tone)}" to your message`;
+        ? Lang.t('tone.option.off.title')
+        : Lang.t('tone.option.title', { tag: this._tagText(tone) });
 
-    const label = tone.id === 'none' ? 'Off' : tone.label;
     option.innerHTML = `
     <span class="db-tone-option__emoji">${tone.id === 'none' ? '\u2014' : tone.emoji || '\ud83d\udcac'}</span>
     <span class="db-tone-option__label">${escapeHtml(label)}</span>
@@ -418,7 +430,7 @@ const ToneSelector = {
       const remove = document.createElement('span');
       remove.className = 'db-tone-option__remove';
       remove.textContent = '\u00d7';
-      remove.title = 'Remove this tone';
+      remove.dataset.dbTip = Lang.t('tone.remove.title');
       remove.addEventListener('click', (e) => {
         e.stopPropagation();
         this._removeCustomTone(tone.id);
@@ -441,7 +453,7 @@ const ToneSelector = {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
     </svg>
-    <span>Add a custom tone</span>
+    <span>${Lang.t('tone.add')}</span>
     `;
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -459,7 +471,7 @@ const ToneSelector = {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'e.g. sarcastic';
+    input.placeholder = Lang.t('tone.add.placeholder');
     input.maxLength = 24;
     input.className = 'db-tone-add-input';
 

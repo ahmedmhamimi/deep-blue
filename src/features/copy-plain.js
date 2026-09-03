@@ -69,7 +69,7 @@ const CopyPlain = {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'deepblue-copy-plain-btn';
-    btn.title = 'Copy without markdown formatting';
+    btn.dataset.dbTip = Lang.t('copyPlain.title');
     btn.style.cssText = `
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 50%; border: none; background: none;
@@ -108,10 +108,10 @@ const CopyPlain = {
   _flash(btn, success) {
     const original = btn.innerHTML;
     btn.innerHTML = success ? this._checkIcon() : this._icon();
-    btn.title = success ? 'Copied!' : 'Copy without markdown formatting';
+    btn.dataset.dbTip = success ? Lang.t('copyPlain.copied') : Lang.t('copyPlain.title');
     setTimeout(() => {
       btn.innerHTML = original;
-      btn.title = 'Copy without markdown formatting';
+      btn.dataset.dbTip = Lang.t('copyPlain.title');
     }, 1200);
   },
 
@@ -123,7 +123,7 @@ const CopyPlain = {
     try {
       const text = this._buildConversationText();
       if (!text) {
-        Toolbar.flashToolbarButton(btn, false, 'No conversation to copy yet.');
+        Toolbar.flashToolbarButton(btn, false, Lang.t('download.noConversation'));
         return;
       }
       await navigator.clipboard.writeText(text);

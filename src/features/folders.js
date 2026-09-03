@@ -55,7 +55,7 @@ const Folders = {
     const folders = this._getFolders();
     const folder = {
       id: uid(),
-      name: name || 'New folder',
+      name: name || Lang.t('folders.new.name'),
       color: hex || CONFIG.folders.palette[0].hex,
     };
     folders.push(folder);
@@ -117,8 +117,8 @@ const Folders = {
     section.style.cssText = `
  display: flex;
  flex-direction: column;
- margin: 4px 12px 8px;
- font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ margin: 6px 12px 10px;
+ font-family: var(--db-font);
  `;
 
     const header = document.createElement('div');
@@ -126,15 +126,20 @@ const Folders = {
  display: flex;
  align-items: center;
  justify-content: space-between;
- padding: 2px 4px 4px;
+ padding: 2px 4px 6px;
  `;
     header.innerHTML = `
- <span style="font-size: 11px; font-weight: 700; color: var(--db-text-secondary); text-transform: uppercase; letter-spacing: 0.6px;">Folders</span>
+ <span style="display:flex; align-items:center; gap:6px; font-size: 11px; font-weight: 700; color: var(--db-text-secondary); text-transform: uppercase; letter-spacing: 0.6px;">
+ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+ <path d="M3 7C3 5.89543 3.89543 5 5 5H9L11 7H19C20.1046 7 21 7.89543 21 9V17C21 18.1046 20.1046 19 19 19H5C3.89543 19 3 18.1046 3 17V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+ </svg>
+ ${Lang.t('folders.title')}
+ </span>
  `;
 
     const addBtn = document.createElement('button');
     addBtn.id = CONFIG.ids.folderAddBtn;
-    addBtn.title = 'New folder';
+    addBtn.dataset.dbTip = Lang.t('folders.add.title');
     addBtn.style.cssText = `
  background: none;
  border: none;
@@ -143,8 +148,10 @@ const Folders = {
  display: flex;
  align-items: center;
  justify-content: center;
- padding: 2px 4px;
- border-radius: 6px;
+ width: 22px;
+ height: 22px;
+ border-radius: var(--db-radius-sm);
+ transition: background var(--db-fast) var(--db-ease), color var(--db-fast) var(--db-ease), transform var(--db-fast) var(--db-ease-snap);
  `;
     addBtn.innerHTML = `
  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -152,17 +159,19 @@ const Folders = {
  </svg>
  `;
     addBtn.addEventListener('mouseenter', () => {
-      addBtn.style.background = 'var(--db-surface-hover)';
-      addBtn.style.color = 'var(--db-text)';
+      addBtn.style.background = 'var(--db-accent-soft)';
+      addBtn.style.color = 'var(--db-accent)';
     });
     addBtn.addEventListener('mouseleave', () => {
       addBtn.style.background = 'none';
       addBtn.style.color = 'var(--db-text-secondary)';
     });
+    addBtn.addEventListener('mousedown', () => (addBtn.style.transform = 'scale(0.92)'));
+    addBtn.addEventListener('mouseup', () => (addBtn.style.transform = 'scale(1)'));
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const folder = this._createFolder(
-        'New folder',
+        Lang.t('folders.new.name'),
         CONFIG.folders.palette[this._getFolders().length % CONFIG.folders.palette.length].hex
       );
       // Immediately open the rename editor for the new folder
@@ -174,7 +183,7 @@ const Folders = {
 
     const list = document.createElement('div');
     list.id = CONFIG.ids.folderList;
-    list.style.cssText = 'display: flex; flex-direction: column; gap: 1px;';
+    list.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
     section.appendChild(list);
 
     this._section = section;
@@ -194,8 +203,8 @@ const Folders = {
 
     if (!folders.length) {
       const empty = document.createElement('div');
-      empty.textContent = 'No folders yet — click + to add one';
-      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 4px 6px 6px;';
+      empty.textContent = Lang.t('folders.empty');
+      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 6px 6px 6px;';
       list.appendChild(empty);
       return;
     }
@@ -216,19 +225,22 @@ const Folders = {
 
     const isOpen = !!this._expanded[folder.id];
     const count = this._countInFolder(folder.id, assignments);
+    const color = escapeHtml(folder.color);
 
     const head = document.createElement('div');
     head.className = 'deepblue-folder-head';
     head.style.cssText = `
  display: flex;
  align-items: center;
- gap: 6px;
- padding: 6px 6px;
- border-radius: 8px;
+ gap: 7px;
+ padding: 7px 7px;
+ border-radius: var(--db-radius-sm);
  cursor: pointer;
  font-size: 13px;
+ font-weight: 500;
  color: var(--db-text);
  user-select: none;
+ transition: background var(--db-fast) var(--db-ease);
  `;
     head.addEventListener('mouseenter', () => {
       head.style.background = 'var(--db-surface-sunken)';
@@ -239,15 +251,24 @@ const Folders = {
 
     head.innerHTML = `
  <svg class="deepblue-folder-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
- style="flex-shrink:0; transition: transform 0.15s ease; transform: rotate(${isOpen ? '90deg' : '0deg'}); color:var(--db-text-secondary);">
+ style="flex-shrink:0; transition: transform var(--db-base) var(--db-ease); transform: rotate(${
+   isOpen ? '90deg' : '0deg'
+ }); color:var(--db-text-tertiary);">
  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
  </svg>
- <span class="deepblue-folder-dot" style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
- <span class="deepblue-folder-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
- <span style="font-size:11px; color:var(--db-text-secondary); flex-shrink:0;">${count}</span>
- <button class="deepblue-folder-more" title="Folder options" style="
- background:none; border:none; cursor:pointer; color:var(--db-text-secondary); display:flex;
- align-items:center; justify-content:center; padding:2px 4px; border-radius:6px; flex-shrink:0;
+ <span class="deepblue-folder-dot" style="width:9px; height:9px; border-radius:3.5px; background:${color}; box-shadow: 0 0 0 3px color-mix(in srgb, ${color} 18%, transparent); flex-shrink:0;"></span>
+ <span class="deepblue-folder-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(
+   folder.name
+ )}</span>
+ ${
+   count
+     ? `<span style="font-size:10.5px; font-weight:700; color:var(--db-text-secondary); background:var(--db-surface-sunken); border-radius:var(--db-radius-pill); min-width:16px; height:16px; padding:0 5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${count}</span>`
+     : ''
+ }
+ <button class="deepblue-folder-more" data-db-tip="${Lang.t('folders.options.title')}" style="
+ background:none; border:none; cursor:pointer; color:var(--db-text-tertiary); display:flex;
+ align-items:center; justify-content:center; width:20px; height:20px; border-radius:var(--db-radius-sm); flex-shrink:0;
+ transition: background var(--db-fast) var(--db-ease), color var(--db-fast) var(--db-ease);
  ">
  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
  <circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>
@@ -262,6 +283,16 @@ const Folders = {
     });
 
     const moreBtn = head.querySelector('.deepblue-folder-more');
+    moreBtn.addEventListener('mouseenter', (e) => {
+      e.stopPropagation();
+      moreBtn.style.background = 'var(--db-surface-hover)';
+      moreBtn.style.color = 'var(--db-text)';
+    });
+    moreBtn.addEventListener('mouseleave', (e) => {
+      e.stopPropagation();
+      moreBtn.style.background = 'none';
+      moreBtn.style.color = 'var(--db-text-tertiary)';
+    });
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this._toggleFolderMenu(folder, moreBtn);
@@ -294,13 +325,14 @@ const Folders = {
 
     if (isOpen) {
       const body = document.createElement('div');
-      body.style.cssText = 'display: flex; flex-direction: column; padding-left: 20px;';
+      body.style.cssText =
+        'display: flex; flex-direction: column; padding-left: 21px; border-left: 1.5px solid var(--db-border-soft); margin-left: 12px; animation: db-fade-in var(--db-base) var(--db-ease);';
 
       const convIds = Object.keys(assignments).filter((id) => assignments[id] === folder.id);
       if (!convIds.length) {
         const empty = document.createElement('div');
-        empty.textContent = 'Empty — drag a chat here';
-        empty.style.cssText = 'font-size: 11.5px; color: var(--db-text-secondary); padding: 4px 6px 6px;';
+        empty.textContent = Lang.t('folders.empty.drag');
+        empty.style.cssText = 'font-size: 11.5px; color: var(--db-text-tertiary); padding: 6px 6px 6px 8px;';
         body.appendChild(empty);
       } else {
         convIds.forEach((convId) => {
@@ -318,7 +350,7 @@ const Folders = {
     const link = this._findLiveLinkForConv(convId);
     const title =
       link?.querySelector(CONFIG.selectors.sidebarConversationTitle)?.textContent?.trim() ||
-      'Untitled conversation';
+      Lang.t('folders.untitled');
 
     const row = document.createElement('div');
     row.style.cssText = `
@@ -340,7 +372,7 @@ const Folders = {
 
     row.innerHTML = `
  <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(title)}</span>
- <button title="Remove from folder" style="
+ <button data-db-tip="${Lang.t('folders.item.remove.title')}" style="
  background:none; border:none; cursor:pointer; color:var(--db-text-secondary); opacity:0;
  display:flex; align-items:center; justify-content:center; padding:2px; border-radius:6px; flex-shrink:0;
  ">
@@ -399,19 +431,19 @@ const Folders = {
  z-index: 999999;
  background: var(--db-surface);
  border: 1px solid var(--db-border);
- border-radius: 10px;
+ border-radius: var(--db-radius-md);
  box-shadow: var(--db-shadow-lg);
  padding: 8px;
- width: 190px;
- font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ width: 196px;
+ font-family: var(--db-font);
  `;
 
     const rect = anchorEl.getBoundingClientRect();
     menu.style.top = `${rect.bottom + 4}px`;
-    menu.style.left = `${Math.max(8, rect.right - 190)}px`;
+    menu.style.left = `${Math.max(8, rect.right - 196)}px`;
 
     const renameBtn = document.createElement('button');
-    renameBtn.textContent = 'Rename';
+    renameBtn.textContent = Lang.t('folders.menu.rename');
     renameBtn.style.cssText = this._menuItemStyle();
     renameBtn.addEventListener('mouseenter', () => (renameBtn.style.background = 'var(--db-surface-sunken)'));
     renameBtn.addEventListener('mouseleave', () => (renameBtn.style.background = 'none'));
@@ -423,20 +455,32 @@ const Folders = {
     menu.appendChild(renameBtn);
 
     const colorLabel = document.createElement('div');
-    colorLabel.textContent = 'Color';
+    colorLabel.textContent = Lang.t('folders.menu.color');
     colorLabel.style.cssText =
-      'font-size: 11px; color: var(--db-text-secondary); padding: 6px 6px 4px; font-weight: 600;';
+      'font-size: 11px; color: var(--db-text-tertiary); padding: 8px 6px 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;';
     menu.appendChild(colorLabel);
 
     const swatches = document.createElement('div');
-    swatches.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 6px 6px;';
+    swatches.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 6px 8px;';
     CONFIG.folders.palette.forEach((c) => {
+      const isSelected = folder.color === c.hex;
       const sw = document.createElement('button');
-      sw.title = c.name;
+      sw.dataset.dbTip = Lang.t(`folders.color.${c.name.toLowerCase()}`) || c.name;
       sw.style.cssText = `
-   width: 18px; height: 18px; border-radius: 50%; background: ${c.hex}; cursor: pointer;
-   border: 2px solid ${folder.color === c.hex ? 'var(--db-text)' : 'transparent'};
+   width: 20px; height: 20px; border-radius: 50%; background: ${c.hex}; cursor: pointer;
+   border: 2px solid var(--db-surface);
+   box-shadow: ${isSelected ? `0 0 0 2px ${c.hex}` : '0 0 0 1px var(--db-border)'};
+   display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;
+   transition: transform var(--db-fast) var(--db-ease-snap), box-shadow var(--db-fast) var(--db-ease);
    `;
+      if (isSelected) {
+        sw.innerHTML = `
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 13L10 18L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+      }
+      sw.addEventListener('mouseenter', () => (sw.style.transform = 'scale(1.14)'));
+      sw.addEventListener('mouseleave', () => (sw.style.transform = 'scale(1)'));
       sw.addEventListener('click', () => {
         this._recolorFolder(folder.id, c.hex);
         menu.remove();
@@ -451,7 +495,7 @@ const Folders = {
     menu.appendChild(divider);
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete folder';
+    deleteBtn.textContent = Lang.t('folders.menu.delete');
     deleteBtn.style.cssText = this._menuItemStyle() + 'color:var(--db-danger);';
     deleteBtn.addEventListener('mouseenter', () => (deleteBtn.style.background = 'var(--db-danger-soft)'));
     deleteBtn.addEventListener('mouseleave', () => (deleteBtn.style.background = 'none'));
@@ -468,8 +512,8 @@ const Folders = {
   _menuItemStyle() {
     return `
  display: block; width: 100%; text-align: left; background: none; border: none;
- cursor: pointer; font-size: 13px; color: var(--db-text); padding: 6px 8px; border-radius: 6px;
- font-family: inherit;
+ cursor: pointer; font-size: 13px; color: var(--db-text); padding: 7px 8px; border-radius: var(--db-radius-sm);
+ font-family: inherit; transition: background var(--db-fast) var(--db-ease);
  `;
   },
 
@@ -541,7 +585,7 @@ const Folders = {
 
     const btn = document.createElement('div');
     btn.className = 'deepblue-add-to-folder-btn';
-    btn.title = 'Add to folder';
+    btn.dataset.dbTip = Lang.t('folders.assign.title');
     btn.setAttribute('role', 'button');
     btn.style.cssText = `
  position: absolute;
@@ -598,23 +642,24 @@ const Folders = {
  z-index: 999999;
  background: var(--db-surface);
  border: 1px solid var(--db-border);
- border-radius: 10px;
+ border-radius: var(--db-radius-md);
  box-shadow: var(--db-shadow-lg);
  padding: 6px;
- width: 190px;
+ width: 196px;
  max-height: 260px;
  overflow-y: auto;
- font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ font-family: var(--db-font);
  `;
+    menu.classList.add('db-scroll');
 
     const rect = anchorEl.getBoundingClientRect();
     menu.style.top = `${rect.bottom + 4}px`;
-    menu.style.left = `${Math.max(8, rect.right - 190)}px`;
+    menu.style.left = `${Math.max(8, rect.right - 196)}px`;
 
     if (!folders.length) {
       const empty = document.createElement('div');
-      empty.textContent = 'No folders yet. Click + above the search bar to create one.';
-      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 8px;';
+      empty.textContent = Lang.t('folders.assign.empty');
+      empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 8px; line-height: 1.5;';
       menu.appendChild(empty);
     } else {
       folders.forEach((folder) => {
@@ -622,9 +667,19 @@ const Folders = {
         item.style.cssText = this._menuItemStyle() + 'display:flex; align-items:center; gap:8px;';
         const isCurrent = currentFolderId === folder.id;
         item.innerHTML = `
-     <span style="width:8px; height:8px; border-radius:50%; background:${escapeHtml(folder.color)}; flex-shrink:0;"></span>
-     <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(folder.name)}</span>
-     ${isCurrent ? '<span style="color:var(--db-accent); font-size:12px;">✓</span>' : ''}
+     <span style="width:9px; height:9px; border-radius:3px; background:${escapeHtml(
+       folder.color
+     )}; flex-shrink:0;"></span>
+     <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(
+       folder.name
+     )}</span>
+     ${
+       isCurrent
+         ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; color:var(--db-accent);">
+       <path d="M5 13L10 18L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+       </svg>`
+         : ''
+     }
      `;
         item.addEventListener('mouseenter', () => (item.style.background = 'var(--db-surface-sunken)'));
         item.addEventListener('mouseleave', () => (item.style.background = 'none'));

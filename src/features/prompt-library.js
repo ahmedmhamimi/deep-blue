@@ -63,7 +63,7 @@ const PromptLibrary = {
     const list = this._all();
     const prompt = list.find((p) => p.id === id);
     if (!prompt) return;
-    prompt.title = title.trim() || 'Untitled prompt';
+    prompt.title = title.trim() || Lang.t('prompts.untitled');
     prompt.content = content.trim();
     this._save(list);
   },
@@ -79,7 +79,7 @@ const PromptLibrary = {
     const textarea = DOM.findTextarea();
     if (!content) return;
     if (!textarea) {
-      alert('Could not find the message box. Click into it and try again.');
+      alert(Lang.t('prompts.findBoxFailed'));
       return;
     }
 
@@ -131,7 +131,7 @@ const PromptLibrary = {
       'ds-button ds-button--primary ds-button--filled ds-button--circle ds-button--m ds-button--icon-relative-m';
     btn.style.cssText =
       '--dsl-button-height: 34px; cursor: pointer; flex-shrink: 0; margin-right: 4px;';
-    btn.title = `Prompt library (${BRAND_NAME})`;
+    btn.dataset.dbTip = Lang.t('prompts.button.title');
     btn.innerHTML = `
     <div class="ds-button__background"></div>
     <div class="ds-button__icon ds-button__icon--last-child">${this._bookIcon()}</div>`;
@@ -177,11 +177,11 @@ const PromptLibrary = {
 
     const header = document.createElement('div');
     header.className = 'deepblue-prompt-panel__header';
-    header.innerHTML = `<span class="deepblue-prompt-panel__title">Prompt Library</span>`;
+    header.innerHTML = `<span class="deepblue-prompt-panel__title">${Lang.t('prompts.panel.title')}</span>`;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'deepblue-prompt-panel__close';
-    closeBtn.title = 'Close';
+    closeBtn.dataset.dbTip = Lang.t('bookmarks.panel.close');
     closeBtn.textContent = '\u00d7';
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -194,7 +194,7 @@ const PromptLibrary = {
     searchWrap.className = 'deepblue-prompt-panel__search-wrap';
     const search = document.createElement('input');
     search.type = 'text';
-    search.placeholder = 'Search prompts\u2026';
+    search.placeholder = Lang.t('prompts.search.placeholder');
     search.className = 'deepblue-prompt-panel__search';
     search.addEventListener('input', () => {
       this._searchTerm = search.value.trim().toLowerCase();
@@ -219,7 +219,7 @@ const PromptLibrary = {
     addBtn.className = 'deepblue-prompt-panel__add-btn';
     addBtn.innerHTML = `
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-    <span>New prompt</span>
+    <span>${Lang.t('prompts.add.title')}</span>
     `;
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -298,8 +298,8 @@ const PromptLibrary = {
       const empty = document.createElement('div');
       empty.className = 'deepblue-prompt-panel__empty';
       empty.textContent = this._searchTerm
-        ? 'No prompts match your search.'
-        : 'No saved prompts yet. Add your first one below.';
+        ? Lang.t('prompts.search.noMatch')
+        : Lang.t('prompts.empty');
       list.appendChild(empty);
       return;
     }
@@ -319,7 +319,7 @@ const PromptLibrary = {
   _buildRow(prompt) {
     const row = document.createElement('div');
     row.className = 'deepblue-prompt-panel__row';
-    row.title = 'Click to insert into your message';
+    row.dataset.dbTip = Lang.t('prompts.row.title');
 
     const text = document.createElement('div');
     text.className = 'deepblue-prompt-panel__row-text';
@@ -339,7 +339,7 @@ const PromptLibrary = {
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'deepblue-prompt-panel__row-action';
-    editBtn.title = 'Edit';
+    editBtn.dataset.dbTip = Lang.t('prompts.edit.title');
     editBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 20l.9-4L17 3.9a1.5 1.5 0 0 1 2.1 0l1 1a1.5 1.5 0 0 1 0 2.1L8 19l-4 1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
     editBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -352,7 +352,7 @@ const PromptLibrary = {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'deepblue-prompt-panel__row-action deepblue-prompt-panel__row-action--danger';
-    deleteBtn.title = 'Delete';
+    deleteBtn.dataset.dbTip = Lang.t('prompts.delete.title');
     deleteBtn.textContent = '\u00d7';
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -378,14 +378,14 @@ const PromptLibrary = {
 
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
-    titleInput.placeholder = 'Title (e.g. "Explain simply")';
+    titleInput.placeholder = Lang.t('prompts.form.titlePlaceholder');
     titleInput.maxLength = 60;
     titleInput.className = 'deepblue-prompt-panel__form-title';
     titleInput.value = prompt ? prompt.title : '';
     form.appendChild(titleInput);
 
     const contentInput = document.createElement('textarea');
-    contentInput.placeholder = 'Prompt text\u2026';
+    contentInput.placeholder = Lang.t('prompts.form.contentPlaceholder');
     contentInput.rows = 4;
     contentInput.className = 'deepblue-prompt-panel__form-content';
     contentInput.value = prompt ? prompt.content : '';
@@ -399,7 +399,7 @@ const PromptLibrary = {
     const cancelBtn = document.createElement('button');
     cancelBtn.type = 'button';
     cancelBtn.className = 'deepblue-prompt-panel__form-btn';
-    cancelBtn.textContent = 'Cancel';
+    cancelBtn.textContent = Lang.t('prompts.form.cancel');
     cancelBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this._editingId = null;
@@ -411,7 +411,7 @@ const PromptLibrary = {
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.className = 'deepblue-prompt-panel__form-btn deepblue-prompt-panel__form-btn--primary';
-    saveBtn.textContent = prompt ? 'Save' : 'Add';
+    saveBtn.textContent = prompt ? Lang.t('prompts.form.save') : Lang.t('prompts.form.add');
     saveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!contentInput.value.trim()) {

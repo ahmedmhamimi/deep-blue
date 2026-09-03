@@ -91,7 +91,7 @@ const MessagePdfExport = {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'deepblue-msg-download-btn';
-    btn.title = 'Download this response';
+    btn.dataset.dbTip = Lang.t('msgExport.title');
     btn.style.cssText = `
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 50%; border: none; background: none;
@@ -171,7 +171,7 @@ const MessagePdfExport = {
     try {
       const exchange = this._buildExchange(assistantMessage);
       if (!exchange) {
-        alert('Could not read this response. Please try again.');
+        alert(Lang.t('export.readFailed'));
         this._flash(btn, false);
         return;
       }
@@ -181,12 +181,12 @@ const MessagePdfExport = {
         ok = await PdfExport.exportMessages(exchange.conversation, exchange.baseFilename);
       } else {
         ok = FormatExport.downloadAs(exchange.conversation, exchange.baseFilename, format);
-        if (!ok) alert('Nothing to export.');
+        if (!ok) alert(Lang.t('export.nothing'));
       }
       this._flash(btn, ok !== false);
     } catch (err) {
       console.error(`${BRAND_NAME}: per-response export failed`, err);
-      alert('Failed to export this response. Please try again.');
+      alert(Lang.t('export.msgFailed'));
       this._flash(btn, false);
     } finally {
       btn.disabled = false;
@@ -196,10 +196,10 @@ const MessagePdfExport = {
 
   _flash(btn, success) {
     btn.innerHTML = success ? this._checkIcon() : this._icon();
-    btn.title = success ? 'Downloaded!' : 'Download this response';
+    btn.dataset.dbTip = success ? Lang.t('msgExport.downloaded') : Lang.t('msgExport.title');
     setTimeout(() => {
       btn.innerHTML = this._icon();
-      btn.title = 'Download this response';
+      btn.dataset.dbTip = Lang.t('msgExport.title');
     }, 1200);
   },
 

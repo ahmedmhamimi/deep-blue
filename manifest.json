@@ -16,6 +16,8 @@
 
         "src/config.js",
         "src/theme.js",
+        "src/i18n.js",
+        "src/tooltip.js",
         "src/utils.js",
         "src/store.js",
         "src/dom.js",

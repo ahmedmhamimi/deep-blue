@@ -26,26 +26,28 @@ const DownloadMenu = {
   _outsideHandler: null,
   _keyHandler: null,
 
-  _FORMATS: [
-    {
-      format: 'pdf',
-      label: 'PDF document',
-      desc: 'Formatted, paginated file',
-      icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2.5" width="14" height="19" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 8.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
-    },
-    {
-      format: 'json',
-      label: 'JSON',
-      desc: 'Structured data, easy to parse',
-      icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5c-2 0-2.5 1-2.5 2.5v3c0 1-.5 2-2 2 1.5 0 2 1 2 2v3c0 1.5.5 2.5 2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 3.5c2 0 2.5 1 2.5 2.5v3c0 1 .5 2 2 2-1.5 0-2 1-2 2v3c0 1.5-.5 2.5-2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    },
-    {
-      format: 'txt',
-      label: 'Plain text',
-      desc: 'Simple .txt, no formatting',
-      icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l3 3v15H6V3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 11h6M9 14.5h6M9 18h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
-    },
-  ],
+  _FORMATS() {
+    return [
+      {
+        format: 'pdf',
+        label: Lang.t('download.pdf.label'),
+        desc: Lang.t('download.pdf.desc'),
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2.5" width="14" height="19" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 8.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+      },
+      {
+        format: 'json',
+        label: Lang.t('download.json.label'),
+        desc: Lang.t('download.json.desc'),
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5c-2 0-2.5 1-2.5 2.5v3c0 1-.5 2-2 2 1.5 0 2 1 2 2v3c0 1.5.5 2.5 2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 3.5c2 0 2.5 1 2.5 2.5v3c0 1 .5 2 2 2-1.5 0-2 1-2 2v3c0 1.5-.5 2.5-2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      },
+      {
+        format: 'txt',
+        label: Lang.t('download.txt.label'),
+        desc: Lang.t('download.txt.desc'),
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l3 3v15H6V3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 11h6M9 14.5h6M9 18h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+      },
+    ];
+  },
 
   isOpen() {
     return !!this._menuEl;
@@ -67,10 +69,10 @@ const DownloadMenu = {
 
     const label = document.createElement('div');
     label.className = 'deepblue-download-menu__label';
-    label.textContent = 'Download as';
+    label.textContent = Lang.t('download.as');
     menu.appendChild(label);
 
-    this._FORMATS.forEach((opt) => {
+    this._FORMATS().forEach((opt) => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'deepblue-download-menu__item';
