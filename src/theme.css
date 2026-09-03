@@ -473,7 +473,6 @@ html[data-db-theme="dark"] {
   border-color: var(--db-border-soft) !important;
 }
 #deepblue-bookmark-panel span { color: var(--db-text); }
-.deepblue-bookmark-hover { background: var(--db-accent-soft) !important; }
 .deepblue-bookmark-btn { color: var(--db-text-tertiary) !important; }
 .deepblue-bookmark-btn--pop { animation: db-glow-pulse 0.5s ease; }
 

@@ -27,6 +27,8 @@ const Tooltip = {
   _target: null,
   _wired: false,
   _showDelayMs: 350,
+  _mouseX: -1,
+  _mouseY: -1,
 
   init() {
     if (this._wired) return;
@@ -37,6 +39,19 @@ const Tooltip = {
       if (!target || target === this._target) return;
       this._scheduleShow(target);
     });
+
+    // Track the last known pointer position (cheap - just two numbers)
+    // so the safety-net check below can confirm the pointer is still
+    // actually over the tracked target, not just that the target still
+    // exists somewhere in the DOM.
+    document.addEventListener(
+      'mousemove',
+      (e) => {
+        this._mouseX = e.clientX;
+        this._mouseY = e.clientY;
+      },
+      { passive: true }
+    );
 
     document.addEventListener('mouseout', (e) => {
       const target = e.target.closest?.('[data-db-tip]');
@@ -72,6 +87,52 @@ const Tooltip = {
     document.addEventListener('mousedown', () => this._hide());
     window.addEventListener('scroll', () => this._hide(), true);
     window.addEventListener('resize', () => this._hide());
+
+    // Safety net: several panels (folders, search, etc.) replace their
+    // own innerHTML in response to state changes. If that happens while
+    // the mouse is sitting still over a tooltip target, the target node
+    // is destroyed without ever firing `mouseout` - the tooltip is then
+    // orphaned with nothing left to tell it to hide. A MutationObserver
+    // catches exactly this: if our current target is (or becomes)
+    // detached from the document, hide immediately instead of waiting
+    // for a mouse event that may never come.
+    this._detachObserver = new MutationObserver(() => {
+      if (this._target && !this._target.isConnected) this._hide();
+    });
+    this._detachObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Extra safety net: also poll on a short interval. Belt-and-braces
+    // for any case a MutationObserver could miss (e.g. the target itself
+    // stays connected but becomes hidden/moved out from under the cursor
+    // without a matching DOM removal), so "stuck forever" is never
+    // possible even in an edge case we haven't thought of.
+    setInterval(() => {
+      if (!this._target) return;
+      if (!this._target.isConnected) {
+        this._hide();
+        return;
+      }
+      const r = this._target.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) {
+        this._hide();
+        return;
+      }
+      // Confirm the pointer is still actually within the target's box.
+      // Catches cases where the element survives a re-render but moves,
+      // gets covered by another panel, or the mouse leaves without a
+      // mouseout ever reaching us.
+      if (this._mouseX >= 0) {
+        const inside =
+          this._mouseX >= r.left &&
+          this._mouseX <= r.right &&
+          this._mouseY >= r.top &&
+          this._mouseY <= r.bottom;
+        if (!inside) this._hide();
+      }
+    }, 250);
   },
 
   _scheduleShow(target) {

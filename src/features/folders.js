@@ -242,10 +242,17 @@ const Folders = {
  user-select: none;
  transition: background var(--db-fast) var(--db-ease);
  `;
-    head.addEventListener('mouseenter', () => {
+    // Only paint the row's own background when the pointer enters/leaves
+    // the row itself - not when it's just moving over the "more" button
+    // nested inside it. Using mouseover/mouseout (which bubble) plus a
+    // relatedTarget check means hovering the "more" button doesn't also
+    // light up the whole row behind it.
+    head.addEventListener('mouseover', (e) => {
+      if (e.target.closest('.deepblue-folder-more')) return;
       head.style.background = 'var(--db-surface-sunken)';
     });
-    head.addEventListener('mouseleave', () => {
+    head.addEventListener('mouseout', (e) => {
+      if (e.relatedTarget && head.contains(e.relatedTarget)) return;
       head.style.background = 'none';
     });
 
@@ -287,11 +294,16 @@ const Folders = {
       e.stopPropagation();
       moreBtn.style.background = 'var(--db-surface-hover)';
       moreBtn.style.color = 'var(--db-text)';
+      // Entering the button counts as leaving the row's own hover area,
+      // so drop the row highlight - only the small button should light up.
+      head.style.background = 'none';
     });
     moreBtn.addEventListener('mouseleave', (e) => {
       e.stopPropagation();
       moreBtn.style.background = 'none';
       moreBtn.style.color = 'var(--db-text-tertiary)';
+      // Back over the row (not off it entirely) - restore the row highlight.
+      if (head.matches(':hover')) head.style.background = 'var(--db-surface-sunken)';
     });
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
