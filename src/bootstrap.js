@@ -6,7 +6,8 @@
 // change and re-injects/re-syncs whichever pieces of DeepBlue UI are missing,
 // while guarding against reacting to DeepBlue's own writes (isOwnMutation).
 //
-// Depends on: config.js, utils.js (debounce), dom.js, bridge-client.js, and every
+// Depends on: config.js, utils.js (debounce, conversationIdFromHref), dom.js,
+// bridge-client.js (Bridge.syncConversation/watchNavigation), and every
 // feature module (Toolbar, TokenCounter, ContextMeter, ChatSearch,
 // SidebarSearch, Folders, PromptLibrary, CopyPlain, MessagePdfExport,
 // Bookmarks, QuickActions).
@@ -24,6 +25,13 @@ function isOwnMutation(mutations) {
 }
 
 function runScan() {
+  // Must run before ContextMeter.scan() below, which reads
+  // Bridge.latestTokenUsage: this is what makes the meter correct the
+  // instant a conversation switch is noticed, rather than only after the
+  // user sends a new message in the window they switched to. See the
+  // comment block at the top of bridge-client.js for why this is needed.
+  Bridge.syncConversation();
+
   Theme.sync();
   Lang.sync();
   Toolbar.ensureInjected();
@@ -68,6 +76,7 @@ function start() {
   Tooltip.init();
   Bridge.listen();
   Bridge.inject();
+  Bridge.watchNavigation();
   setTimeout(runScan, CONFIG.timing.initialScanDelayMs);
   observer.observe(document.body, { childList: true, subtree: true });
 }

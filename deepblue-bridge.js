@@ -10,8 +10,12 @@
 //     `accumulated_token_usage` (both already sent by DeepSeek's backend to
 //     the page - this isn't reading anything the page wasn't already given).
 //   - It relays only those two numbers back to the content script via
-//     window.postMessage. No prompts, no auth headers, no full response
-//     bodies, no other request data ever leaves this file.
+//     window.postMessage, tagged with which conversation the request was
+//     made for (see getConversationId() below) purely so the content script
+//     can tell a same-window update from a stale one after the user has
+//     switched chats - not for any other purpose. No prompts, no auth
+//     headers, no full response bodies, no other request data ever leaves
+//     this file.
 //   - It never modifies request/response data - purely observational.
 //
 (function () {
@@ -22,6 +26,26 @@
 
   function post(payload) {
     window.postMessage({ source: 'deepblue-bridge', type: MSG_TYPE, ...payload }, '*');
+  }
+
+  // Which conversation slug (the "xyz" in /chat/s/xyz) is open right now, or
+  // null on the "new chat" screen before DeepSeek has assigned one yet. This
+  // main-world script has no access to utils.js's conversationIdFromHref (it
+  // runs in an entirely separate JS realm from the content scripts), so the
+  // same regex is intentionally duplicated here - keep the two in sync if
+  // DeepSeek's URL scheme ever changes.
+  //
+  // Captured once per request, at the moment it's SENT, and carried through
+  // to every post() for that same request. DeepSeek's page is an SPA: a
+  // reply can still be streaming in after the user has already clicked over
+  // to a different conversation, and reading location.pathname only when the
+  // data *arrives* would silently mislabel that late data as belonging to
+  // whatever the user is looking at by then instead of where it actually
+  // came from. Tagging it at send time lets the content script tell the two
+  // apart and keep them from bleeding into each other.
+  function getConversationId() {
+    const match = location.pathname.match(/\/chat\/s\/([a-zA-Z0-9-]+)/);
+    return match ? match[1] : null;
   }
 
   /**
@@ -93,6 +117,7 @@
   OrigXHR.prototype.send = function (...args) {
     const url = this.__deepblueUrl;
     if (isTargetUrl(url)) {
+      const conversationId = getConversationId();
       const state = { tokenUsage: null, modelType: null, buffer: '' };
       let lastLength = 0;
 
@@ -103,7 +128,7 @@
           feedChunk(text.slice(lastLength), state);
           lastLength = text.length;
           if (state.tokenUsage != null || state.modelType) {
-            post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: false });
+            post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: false, conversationId });
           }
         } catch (err) {
           // Never let a parsing hiccup break the page's own request handling.
@@ -111,7 +136,7 @@
       });
 
       this.addEventListener('loadend', () => {
-        post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: true });
+        post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: true, conversationId });
       });
     }
     return origSend.apply(this, args);
@@ -122,6 +147,11 @@
   if (typeof origFetch === 'function') {
     window.fetch = async function (input, init) {
       const url = typeof input === 'string' ? input : input && input.url;
+      // Captured before the request even goes out, same reasoning as the
+      // XHR path above: awaiting the response can take a while, and the
+      // user is free to navigate to a different conversation during that
+      // wait.
+      const conversationId = isTargetUrl(url) ? getConversationId() : null;
       const res = await origFetch.call(this, input, init);
 
       if (isTargetUrl(url) && res.body && typeof res.body.tee === 'function') {
@@ -136,9 +166,9 @@
               const { done, value } = await reader.read();
               if (done) break;
               feedChunk(decoder.decode(value, { stream: true }), state);
-              post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: false });
+              post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: false, conversationId });
             }
-            post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: true });
+            post({ tokenUsage: state.tokenUsage, modelType: state.modelType, done: true, conversationId });
           } catch (err) {
             // Ignore - the passthrough stream still reaches the page untouched.
           }
