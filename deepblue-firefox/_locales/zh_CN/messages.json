@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "DeepBlue：DeepSeek 搜索、文件夹与导出增强",
+    "description": "The extension's name, shown in the Chrome Web Store, install dialog, and chrome://extensions."
+  },
+  "extDescription": {
+    "message": "增强 DeepSeek 聊天体验：搜索、文件夹、书签、语气选择、Token/上下文统计，一键导出 PDF、JSON。",
+    "description": "Short description (max 132 characters) shown on chrome://extensions and in some Chrome Web Store surfaces."
+  }
+}

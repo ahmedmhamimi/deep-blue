@@ -1,0 +1,95 @@
+{
+  "manifest_version": 3,
+  "default_locale": "en",
+  "name": "__MSG_extName__",
+  "version": "1.1",
+  "description": "__MSG_extDescription__",
+  "host_permissions": [
+    "https://chat.deepseek.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "js": [
+        "deepblue-bridge.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "css": [
+        "src/theme.css"
+      ],
+      "js": [
+        "vendor/html2canvas.min.js",
+        "vendor/jspdf.umd.min.js",
+        "src/config.js",
+        "src/theme.js",
+        "src/i18n.js",
+        "src/tooltip.js",
+        "src/utils.js",
+        "src/store.js",
+        "src/dom.js",
+        "src/bridge-client.js",
+        "src/features/generation-timer.js",
+        "src/features/char-counter.js",
+        "src/features/token-counter.js",
+        "src/features/context-estimator.js",
+        "src/features/context-meter.js",
+        "src/pdf/extractor.js",
+        "src/export/download-menu.js",
+        "src/export/format-export.js",
+        "src/export/loading-overlay.js",
+        "src/features/toolbar.js",
+        "src/features/chat-search.js",
+        "src/features/sidebar-search.js",
+        "src/features/folders.js",
+        "src/features/tone-selector.js",
+        "src/features/prompt-library.js",
+        "src/features/copy-plain.js",
+        "src/features/bookmarks.js",
+        "src/features/quick-actions.js",
+        "src/pdf/renderer.js",
+        "src/pdf/pdf-export.js",
+        "src/features/message-pdf-export.js",
+        "src/bootstrap.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "a.mhamimi@outlook.com",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}
