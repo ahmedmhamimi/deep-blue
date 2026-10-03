@@ -34,7 +34,10 @@
 //  * Autonomy: "Maybe later" and "Don't ask again" are always one tap away.
 //    Being allowed to say no makes a yes much more likely, and respects them.
 //  * Restraint: at most 3 asks ever, >= 7 days apart (7d, then 21d backoff).
-//    Rate it / dislike it / "don't ask again" -> never ask again. An ask that
+//    Rate it / dislike it / "don't ask again" -> never ask again. Someone who
+//    tapped 4-5 stars but closed the card without posting has already told us
+//    how they feel - re-asking them next week would feel naggy, so we don't.
+//    Their star rating is saved (state.rating) for future use. An ask that
 //    is simply ignored (auto-fades after 40 s) is not counted as a refusal.
 //
 // Depends on: ui-kit.js, i18n.js, config.js, dom.js (findTextarea).
@@ -145,8 +148,8 @@ const ReviewPrompt = {
     const cfg = CONFIG.review;
     const state = await this._load();
     const DAY = 86400000;
-    if (outcome === 'reviewed' || outcome === 'unhappy' || outcome === 'never') {
-      state.status = outcome === 'reviewed' ? 'completed' : 'declined';
+    if (outcome === 'reviewed' || outcome === 'rated' || outcome === 'unhappy' || outcome === 'never') {
+      state.status = outcome === 'reviewed' ? 'completed' : outcome === 'rated' ? 'rated' : 'declined';
     } else if (outcome === 'ignored') {
       // Not a refusal: give the ask back and try again in a few days.
       state.asks = Math.max(0, state.asks - 1);
@@ -156,6 +159,13 @@ const ReviewPrompt = {
       const idx = Math.min(Math.max(state.asks - 1, 0), cfg.snoozeDays.length - 1);
       state.nextEligibleAt = Date.now() + cfg.snoozeDays[idx] * DAY;
     }
+    await this._save(state);
+  },
+
+  async _recordRating(n) {
+    const state = await this._load();
+    state.rating = n;
+    state.ratedAt = Date.now();
     await this._save(state);
   },
 
@@ -201,6 +211,14 @@ const ReviewPrompt = {
     let closed = false;
     let interacted = false;
     let idleTimer = null;
+    let inEndStage = false;
+    const END_FADE_MS = 25000;
+    // After a star is tapped the card is a follow-up invitation, not a
+    // question: if it's left alone it fades away quietly on its own.
+    const armEnd = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => dismiss(closeOutcome()), END_FADE_MS);
+    };
 
     const starsHtml = (n, interactive) =>
       [1, 2, 3, 4, 5]
@@ -230,7 +248,7 @@ const ReviewPrompt = {
       }, 170);
     };
 
-    const closeOutcome = () => (rating && rating <= 3 ? 'unhappy' : 'later');
+    const closeOutcome = () => (!rating ? 'later' : rating >= 4 ? 'rated' : 'unhappy');
 
     const dismiss = (outcome, delay = 0) => {
       if (closed) return;
@@ -289,6 +307,7 @@ const ReviewPrompt = {
         if (rating) return;
         rating = n;
         interacted = true;
+        this._recordRating(n);
         paint(n);
         stars.forEach((s, i) => {
           s.disabled = true;
@@ -332,6 +351,7 @@ const ReviewPrompt = {
 
     // -- stage 2a: happy -> store review ---------------------------------
     const stageHappy = () => {
+      inEndStage = true;
       swap(
         `
         <div class="done-stars" aria-hidden="true">${starsHtml(rating, false)}</div>
@@ -346,12 +366,14 @@ const ReviewPrompt = {
           });
           view.querySelector('.later').addEventListener('click', () => dismiss('later'));
           view.querySelector('.cta').focus({ preventScroll: true });
+          armEnd();
         }
       );
     };
 
     // -- stage 2b: unhappy -> private feedback, public review still open --
     const stageSad = () => {
+      inEndStage = true;
       swap(
         `
         <h2 id="rv-title">${t('review.sad.title')}</h2>
@@ -368,6 +390,7 @@ const ReviewPrompt = {
             thanks('reviewed');
           });
           view.querySelector('.cta').focus({ preventScroll: true });
+          armEnd();
         }
       );
     };
@@ -396,8 +419,11 @@ const ReviewPrompt = {
       idleTimer = setTimeout(() => !interacted && dismiss('ignored'), 40000);
     };
     card.addEventListener('mouseenter', () => clearTimeout(idleTimer));
-    card.addEventListener('mouseleave', () => !interacted && armIdle());
-    card.addEventListener('focusin', () => { interacted = true; clearTimeout(idleTimer); });
+    card.addEventListener('mouseleave', () => (inEndStage ? armEnd() : !interacted && armIdle()));
+    card.addEventListener('focusin', () => {
+      interacted = true;
+      if (!inEndStage) clearTimeout(idleTimer);
+    });
     armIdle();
 
     view.innerHTML = stage1();
