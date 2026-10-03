@@ -162,6 +162,7 @@ const Bookmarks = {
       const nowBookmarked = btn.dataset.bookmarked !== 'true';
       if (nowBookmarked) {
         this._add(convId, { key, role, snippet: this._snippet(text), addedAt: Date.now() });
+        ReviewPrompt.track('bookmark');
         btn.classList.add('deepblue-bookmark-btn--pop');
         setTimeout(() => btn.classList.remove('deepblue-bookmark-btn--pop'), 260);
       } else {

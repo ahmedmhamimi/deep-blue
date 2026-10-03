@@ -365,6 +365,7 @@ const PromptLibrary = {
 
     row.addEventListener('click', () => {
       this._insert(prompt.content);
+      ReviewPrompt.track('prompt');
       this._closePanel();
     });
 

@@ -62,6 +62,7 @@ const Folders = {
     this._saveFolders(folders);
     this._expanded[folder.id] = true;
     this.render();
+    ReviewPrompt.track('folder');
     return folder;
   },
 

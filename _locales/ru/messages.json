@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "DeepBlue для DeepSeek: поиск, папки и экспорт",
+    "description": "The extension's name, shown in the Chrome Web Store, install dialog, and chrome://extensions."
+  },
+  "extDescription": {
+    "message": "Прокачайте чат DeepSeek: поиск, папки, закладки, выбор тона, счётчики токенов и контекста, экспорт в PDF/JSON.",
+    "description": "Short description (max 132 characters) shown on chrome://extensions and in some Chrome Web Store surfaces."
+  }
+}

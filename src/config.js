@@ -173,6 +173,27 @@ const CONFIG = {
       },
     ],
   },
+  // Chrome Web Store identity + the post-install / review experience.
+  // All numbers below are deliberate - see the psychology notes in
+  // src/review-prompt.js for why each one is what it is.
+  store: {
+    id: 'jfbgfobpgdpjfclgbnnfhbiiofodhglg',
+    reviewsUrl: 'https://chromewebstore.google.com/detail/jfbgfobpgdpjfclgbnnfhbiiofodhglg/reviews',
+    supportUrl: 'https://chromewebstore.google.com/detail/jfbgfobpgdpjfclgbnnfhbiiofodhglg/support',
+  },
+  review: {
+    stateKey: 'deepblue-review-state-v1',
+    // Weighted "this tool just helped me" score a person must reach before
+    // we even consider asking. Export is the strongest signal of real value.
+    weights: { export: 3, bookmark: 2, folder: 2, prompt: 2, copy: 1, tone: 1 },
+    minScore: 8,
+    minActiveDays: 2,
+    minDaysSinceInstall: 2,
+    settleDelayMs: 2600,
+    snoozeDays: [7, 21],
+    maxAsks: 3,
+    minGapBetweenAsksDays: 7,
+  },
   timing: {
     initialScanDelayMs: 1200,
     observerDebounceMs: 300,

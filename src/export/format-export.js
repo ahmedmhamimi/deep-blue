@@ -90,6 +90,7 @@ const FormatExport = {
     } else {
       this.downloadTextFile(this.toPlainText(conversation), `${baseFilename}.txt`, 'text/plain');
     }
+    ReviewPrompt.track('export');
     return true;
   },
 };

@@ -68,6 +68,7 @@ const ToneSelector = {
 
   _saveState(state) {
     Store.setToneState(state);
+    if (state.selectedId && state.selectedId !== 'none') ReviewPrompt.track('tone');
   },
 
   _allTones() {

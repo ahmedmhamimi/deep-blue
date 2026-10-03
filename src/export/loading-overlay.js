@@ -65,6 +65,7 @@ const LoadingOverlay = {
   // spinning), then fades it out on its own - callers don't need to call
   // hide() themselves after this.
   finish(success, text) {
+    if (success) ReviewPrompt.track('export');
     if (!this._el) return;
     this._setState(success ? 'success' : 'error');
     this._el.innerHTML = `

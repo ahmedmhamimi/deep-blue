@@ -194,6 +194,7 @@ const Toolbar = {
   // share the same "background + icon" inner markup.
   flashToolbarButton(btn, success, failTip) {
     if (!btn) return;
+    if (success) ReviewPrompt.track('copy');
     const originalHTML = btn.innerHTML;
     const originalTip = btn.dataset.dbTip;
     btn.innerHTML = `

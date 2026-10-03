@@ -106,6 +106,7 @@ const CopyPlain = {
   },
 
   _flash(btn, success) {
+    if (success) ReviewPrompt.track('copy');
     const original = btn.innerHTML;
     btn.innerHTML = success ? this._checkIcon() : this._icon();
     btn.dataset.dbTip = success ? Lang.t('copyPlain.copied') : Lang.t('copyPlain.title');
