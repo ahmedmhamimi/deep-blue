@@ -28,6 +28,7 @@
         "src/dom.js",
         "src/ui-kit.js",
         "src/welcome.js",
+        "src/whats-new.js",
         "src/review-prompt.js",
 
         "src/bridge-client.js",

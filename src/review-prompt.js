@@ -119,6 +119,7 @@ const ReviewPrompt = {
   _isUserBusy() {
     if (document.visibilityState !== 'visible') return true;
     if (document.getElementById(Welcome._HOST_ID)) return true;
+    if (document.getElementById(WhatsNew._HOST_ID)) return true;
     const ta = DOM.findTextarea();
     // Typing or holding a draft = mid-task. Stay out of the way.
     if (ta && ta.value && ta.value.trim().length > 0) return true;

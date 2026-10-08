@@ -15,6 +15,22 @@ const UNINSTALL_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSfSLeAlAR99XVRds06ysehhihgkG3NE4ejHx6cJOTdZr0teNQ/viewform?usp=publish-editor';
 const REVIEW_STATE_KEY = 'deepblue-review-state-v1';
 const WELCOME_KEY = 'deepblue-welcome-pending-v1';
+const WHATSNEW_KEY = 'deepblue-whatsnew-subfolders-pending-v1';
+// Subfolders shipped in this version; anyone updating from an older one gets
+// the one-time "what's new" card. Fresh installs never do.
+const WHATSNEW_SINCE = '1.3';
+
+// true if dotted version a is older than b (missing parts count as 0)
+function isOlder(a, b) {
+  const pa = String(a).split('.').map(Number);
+  const pb = String(b).split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
 
 function registerUninstallUrl() {
   try {
@@ -70,6 +86,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       },
     });
     await goToDeepSeek();
+  } else if (
+    details.reason === 'update' &&
+    details.previousVersion &&
+    isOlder(details.previousVersion, WHATSNEW_SINCE)
+  ) {
+    await chrome.storage.local.set({ [WHATSNEW_KEY]: true });
   }
 });
 
@@ -78,13 +100,20 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // strictly one at a time, and the first one wins and clears the flag.
 let claimQueue = Promise.resolve();
 
+// message type -> the storage flag it claims
+const CLAIMS = {
+  'deepblue:claim-welcome': WELCOME_KEY,
+  'deepblue:claim-whatsnew': WHATSNEW_KEY,
+};
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type !== 'deepblue:claim-welcome') return false;
+  const key = CLAIMS[msg?.type];
+  if (!key) return false;
 
   claimQueue = claimQueue.then(async () => {
-    const res = await chrome.storage.local.get(WELCOME_KEY);
-    if (res[WELCOME_KEY] === true) {
-      await chrome.storage.local.set({ [WELCOME_KEY]: false });
+    const res = await chrome.storage.local.get(key);
+    if (res[key] === true) {
+      await chrome.storage.local.set({ [key]: false });
       return { claimed: true };
     }
     return { claimed: false };

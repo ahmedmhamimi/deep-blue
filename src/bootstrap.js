@@ -79,6 +79,7 @@ function start() {
   Bridge.watchNavigation();
   setTimeout(runScan, CONFIG.timing.initialScanDelayMs);
   Welcome.maybeShow();
+  WhatsNew.maybeShow();
   ReviewPrompt.init();
   observer.observe(document.body, { childList: true, subtree: true });
 }
