@@ -51,13 +51,67 @@ const Folders = {
     Store.setAssignments(map);
   },
 
-  _createFolder(name, hex) {
+  // -- tree helpers (folders are a flat list; parentId links them) -----
+  // Existing folders have no parentId and are treated as top-level, so
+  // data saved by earlier versions keeps working untouched.
+
+  _childrenOf(parentId, folders) {
+    const ids = new Set(folders.map((f) => f.id));
+    return folders.filter((f) =>
+      parentId ? f.parentId === parentId : !f.parentId || !ids.has(f.parentId)
+    );
+  },
+
+  _descendantIds(id, folders) {
+    const out = new Set();
+    const walk = (pid) => {
+      folders.forEach((f) => {
+        if (f.parentId === pid && !out.has(f.id)) {
+          out.add(f.id);
+          walk(f.id);
+        }
+      });
+    };
+    walk(id);
+    return out;
+  },
+
+  _depthOf(id, folders) {
+    let depth = 0;
+    const seen = new Set();
+    let cur = folders.find((f) => f.id === id);
+    while (cur && cur.parentId && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      cur = folders.find((f) => f.id === cur.parentId);
+      if (cur) depth++;
+    }
+    return depth;
+  },
+
+  // Depth-first flat list [{folder, depth}] for menus.
+  _flatten(folders) {
+    const out = [];
+    const walk = (parentId, depth) => {
+      this._childrenOf(parentId, folders).forEach((f) => {
+        out.push({ folder: f, depth });
+        walk(f.id, depth + 1);
+      });
+    };
+    walk(null, 0);
+    return out;
+  },
+
+  _createFolder(name, hex, parentId) {
     const folders = this._getFolders();
     const folder = {
       id: uid(),
       name: name || Lang.t('folders.new.name'),
       color: hex || CONFIG.folders.palette[0].hex,
     };
+    if (parentId) {
+      folder.parentId = parentId;
+      this._expanded[parentId] = true;
+    }
     folders.push(folder);
     this._saveFolders(folders);
     this._expanded[folder.id] = true;
@@ -85,16 +139,18 @@ const Folders = {
   },
 
   _deleteFolder(id) {
-    const folders = this._getFolders().filter((f) => f.id !== id);
-    this._saveFolders(folders);
+    const all = this._getFolders();
+    const doomed = this._descendantIds(id, all);
+    doomed.add(id);
+    this._saveFolders(all.filter((f) => !doomed.has(f.id)));
 
     const assignments = this._getAssignments();
     Object.keys(assignments).forEach((convId) => {
-      if (assignments[convId] === id) delete assignments[convId];
+      if (doomed.has(assignments[convId])) delete assignments[convId];
     });
     this._saveAssignments(assignments);
 
-    delete this._expanded[id];
+    doomed.forEach((fid) => delete this._expanded[fid]);
     this.render();
   },
 
@@ -210,23 +266,31 @@ const Folders = {
       return;
     }
 
-    folders.forEach((folder) => {
-      list.appendChild(this._buildFolderRow(folder, assignments));
+    this._childrenOf(null, folders).forEach((folder) => {
+      list.appendChild(this._buildFolderRow(folder, assignments, folders, 0));
     });
   },
 
-  _countInFolder(folderId, assignments) {
-    return Object.values(assignments).filter((f) => f === folderId).length;
+  // Counts chats in this folder and everything nested beneath it.
+  _countInFolder(folderId, assignments, folders) {
+    const ids = this._descendantIds(folderId, folders || this._getFolders());
+    ids.add(folderId);
+    return Object.values(assignments).filter((f) => ids.has(f)).length;
   },
 
-  _buildFolderRow(folder, assignments) {
+  _buildFolderRow(folder, assignments, folders, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'deepblue-folder-row';
     wrap.dataset.folderId = folder.id;
 
     const isOpen = !!this._expanded[folder.id];
-    const count = this._countInFolder(folder.id, assignments);
+    const canNest = depth < CONFIG.folders.maxDepth - 1;
+    const count = this._countInFolder(folder.id, assignments, folders);
     const color = escapeHtml(folder.color);
+
+    // Nested folders get a faint wash of their own color so they read as
+    // containers rather than as chats sitting at the same indent.
+    const baseBg = depth > 0 ? `color-mix(in srgb, ${folder.color} 9%, transparent)` : 'none';
 
     const head = document.createElement('div');
     head.className = 'deepblue-folder-head';
@@ -238,9 +302,10 @@ const Folders = {
  border-radius: var(--db-radius-sm);
  cursor: pointer;
  font-size: 13px;
- font-weight: 500;
+ font-weight: 600;
  color: var(--db-text);
  user-select: none;
+ background: ${baseBg};
  transition: background var(--db-fast) var(--db-ease);
  `;
     // Only paint the row's own background when the pointer enters/leaves
@@ -249,12 +314,16 @@ const Folders = {
     // relatedTarget check means hovering the "more" button doesn't also
     // light up the whole row behind it.
     head.addEventListener('mouseover', (e) => {
-      if (e.target.closest('.deepblue-folder-more')) return;
+      const addSubEl = head.querySelector('.deepblue-folder-addsub');
+      if (addSubEl) addSubEl.style.opacity = '1';
+      if (e.target.closest('.deepblue-folder-more, .deepblue-folder-addsub')) return;
       head.style.background = 'var(--db-surface-sunken)';
     });
     head.addEventListener('mouseout', (e) => {
       if (e.relatedTarget && head.contains(e.relatedTarget)) return;
-      head.style.background = 'none';
+      const addSubEl = head.querySelector('.deepblue-folder-addsub');
+      if (addSubEl) addSubEl.style.opacity = '0';
+      head.style.background = baseBg;
     });
 
     head.innerHTML = `
@@ -264,13 +333,28 @@ const Folders = {
  }); color:var(--db-text-tertiary);">
  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
  </svg>
- <span class="deepblue-folder-dot" style="width:9px; height:9px; border-radius:3.5px; background:${color}; box-shadow: 0 0 0 3px color-mix(in srgb, ${color} 18%, transparent); flex-shrink:0;"></span>
+ <svg class="deepblue-folder-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+ <path d="M3 7C3 5.89543 3.89543 5 5 5H9L11 7H19C20.1046 7 21 7.89543 21 9V17C21 18.1046 20.1046 19 19 19H5C3.89543 19 3 18.1046 3 17V7Z" fill="${color}" fill-opacity="0.28" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+ </svg>
  <span class="deepblue-folder-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(
    folder.name
  )}</span>
  ${
    count
      ? `<span style="font-size:10.5px; font-weight:700; color:var(--db-text-secondary); background:var(--db-surface-sunken); border-radius:var(--db-radius-pill); min-width:16px; height:16px; padding:0 5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${count}</span>`
+     : ''
+ }
+ ${
+   canNest
+     ? `<button class="deepblue-folder-addsub" data-db-tip="${Lang.t('folders.menu.addSub')}" style="
+ background:none; border:none; cursor:pointer; color:var(--db-text-tertiary); display:flex; opacity:0;
+ align-items:center; justify-content:center; width:20px; height:20px; border-radius:var(--db-radius-sm); flex-shrink:0;
+ transition: background var(--db-fast) var(--db-ease), color var(--db-fast) var(--db-ease), opacity var(--db-fast) var(--db-ease);
+ ">
+ <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+ </svg>
+ </button>`
      : ''
  }
  <button class="deepblue-folder-more" data-db-tip="${Lang.t('folders.options.title')}" style="
@@ -285,10 +369,31 @@ const Folders = {
  `;
 
     head.addEventListener('click', (e) => {
-      if (e.target.closest('.deepblue-folder-more')) return;
+      if (e.target.closest('.deepblue-folder-more, .deepblue-folder-addsub')) return;
       this._expanded[folder.id] = !this._expanded[folder.id];
       this.render();
     });
+
+    const addSubBtn = head.querySelector('.deepblue-folder-addsub');
+    if (addSubBtn) {
+      addSubBtn.addEventListener('mouseenter', (e) => {
+        e.stopPropagation();
+        addSubBtn.style.background = 'var(--db-accent-soft)';
+        addSubBtn.style.color = 'var(--db-accent)';
+        head.style.background = baseBg;
+      });
+      addSubBtn.addEventListener('mouseleave', (e) => {
+        e.stopPropagation();
+        addSubBtn.style.background = 'none';
+        addSubBtn.style.color = 'var(--db-text-tertiary)';
+        if (head.matches(':hover')) head.style.background = 'var(--db-surface-sunken)';
+      });
+      addSubBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sub = this._createFolder(Lang.t('folders.new.subname'), folder.color, folder.id);
+        requestAnimationFrame(() => this._startRename(sub.id));
+      });
+    }
 
     const moreBtn = head.querySelector('.deepblue-folder-more');
     moreBtn.addEventListener('mouseenter', (e) => {
@@ -297,7 +402,7 @@ const Folders = {
       moreBtn.style.color = 'var(--db-text)';
       // Entering the button counts as leaving the row's own hover area,
       // so drop the row highlight - only the small button should light up.
-      head.style.background = 'none';
+      head.style.background = baseBg;
     });
     moreBtn.addEventListener('mouseleave', (e) => {
       e.stopPropagation();
@@ -319,12 +424,12 @@ const Folders = {
       head.style.outline = `1.5px dashed ${folder.color}`;
     });
     head.addEventListener('dragleave', () => {
-      head.style.background = 'none';
+      head.style.background = baseBg;
       head.style.outline = 'none';
     });
     head.addEventListener('drop', (e) => {
       e.preventDefault();
-      head.style.background = 'none';
+      head.style.background = baseBg;
       head.style.outline = 'none';
       const convId =
         this._draggingConvId ||
@@ -338,11 +443,18 @@ const Folders = {
 
     if (isOpen) {
       const body = document.createElement('div');
-      body.style.cssText =
-        'display: flex; flex-direction: column; padding-left: 21px; border-left: 1.5px solid var(--db-border-soft); margin-left: 12px; animation: db-fade-in var(--db-base) var(--db-ease);';
+      // Top level keeps the original generous indent; nested levels use a
+      // tighter one so deep trees still fit the narrow sidebar.
+      const indent = depth === 0 ? 'padding-left: 21px; margin-left: 12px;' : 'padding-left: 7px; margin-left: 11px;';
+      body.style.cssText = `display: flex; flex-direction: column; ${indent} border-left: 2px solid color-mix(in srgb, ${folder.color} 55%, transparent); border-radius: 0 0 var(--db-radius-sm) 0; margin-top: 2px; margin-bottom: 3px; animation: db-fade-in var(--db-base) var(--db-ease);`;
+
+      const subfolders = this._childrenOf(folder.id, folders);
+      subfolders.forEach((sub) => {
+        body.appendChild(this._buildFolderRow(sub, assignments, folders, depth + 1));
+      });
 
       const convIds = Object.keys(assignments).filter((id) => assignments[id] === folder.id);
-      if (!convIds.length) {
+      if (!convIds.length && !subfolders.length) {
         const empty = document.createElement('div');
         empty.textContent = Lang.t('folders.empty.drag');
         empty.style.cssText = 'font-size: 11.5px; color: var(--db-text-tertiary); padding: 6px 6px 6px 8px;';
@@ -374,6 +486,7 @@ const Folders = {
  border-radius: 8px;
  cursor: pointer;
  font-size: 12.5px;
+ font-weight: 400;
  color: var(--db-text-secondary);
  `;
     row.addEventListener('mouseenter', () => {
@@ -384,6 +497,9 @@ const Folders = {
     });
 
     row.innerHTML = `
+ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; color:var(--db-text-tertiary);">
+ <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+ </svg>
  <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(title)}</span>
  <button data-db-tip="${Lang.t('folders.item.remove.title')}" style="
  background:none; border:none; cursor:pointer; color:var(--db-text-secondary); opacity:0;
@@ -467,6 +583,22 @@ const Folders = {
     });
     menu.appendChild(renameBtn);
 
+    const allFolders = this._getFolders();
+    if (this._depthOf(folder.id, allFolders) < CONFIG.folders.maxDepth - 1) {
+      const subBtn = document.createElement('button');
+      subBtn.textContent = Lang.t('folders.menu.addSub');
+      subBtn.style.cssText = this._menuItemStyle();
+      subBtn.addEventListener('mouseenter', () => (subBtn.style.background = 'var(--db-surface-sunken)'));
+      subBtn.addEventListener('mouseleave', () => (subBtn.style.background = 'none'));
+      subBtn.addEventListener('click', () => {
+        menu.remove();
+        this._menuOpenFor = null;
+        const sub = this._createFolder(Lang.t('folders.new.subname'), folder.color, folder.id);
+        requestAnimationFrame(() => this._startRename(sub.id));
+      });
+      menu.appendChild(subBtn);
+    }
+
     const colorLabel = document.createElement('div');
     colorLabel.textContent = Lang.t('folders.menu.color');
     colorLabel.style.cssText =
@@ -532,7 +664,7 @@ const Folders = {
 
   _startRename(folderId) {
     const row = document.querySelector(
-      `.deepblue-folder-row[data-folder-id="${folderId}"] .deepblue-folder-name`
+      `.deepblue-folder-row[data-folder-id="${folderId}"] > .deepblue-folder-head .deepblue-folder-name`
     );
     const folder = this._getFolders().find((f) => f.id === folderId);
     if (!row || !folder) return;
@@ -675,9 +807,11 @@ const Folders = {
       empty.style.cssText = 'font-size: 12px; color: var(--db-text-secondary); padding: 8px; line-height: 1.5;';
       menu.appendChild(empty);
     } else {
-      folders.forEach((folder) => {
+      this._flatten(folders).forEach(({ folder, depth }) => {
         const item = document.createElement('button');
-        item.style.cssText = this._menuItemStyle() + 'display:flex; align-items:center; gap:8px;';
+        item.style.cssText =
+          this._menuItemStyle() +
+          `display:flex; align-items:center; gap:8px; padding-left:${8 + Math.min(depth, 6) * 12}px;`;
         const isCurrent = currentFolderId === folder.id;
         item.innerHTML = `
      <span style="width:9px; height:9px; border-radius:3px; background:${escapeHtml(

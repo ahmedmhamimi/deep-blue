@@ -109,6 +109,7 @@ const CONFIG = {
   folders: {
     storageKey: 'deepblue-folders-v1',
     assignmentsKey: 'deepblue-folder-assignments-v1',
+    maxDepth: 8, // levels of nesting allowed (top-level folder = level 1)
     palette: [
       { name: 'Blue', hex: '#3964fe' },
       { name: 'Purple', hex: '#6c5ce7' },
