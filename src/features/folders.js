@@ -15,7 +15,15 @@
 const Folders = {
   _expanded: {}, // folderId -> bool, in-memory only (resets on reload, harmless)
   _menuOpenFor: null,
-  _draggingConvId: null, // same-page drag state; dataTransfer alone is unreliable across some setups
+  // Same-page drag state: { type: 'conv' | 'folder', id }. dataTransfer alone is
+  // unreliable (custom MIME types can't be read during dragover), so this is the
+  // source of truth for what is being dragged.
+  _drag: null,
+  _dragSrc: null,
+  _overEl: null,
+  _expandTimer: null,
+  _expandFor: null,
+  _rootStrip: null,
 
   ensureInjected(sidebarLinks) {
     if (document.getElementById(CONFIG.ids.folderSection)) {
@@ -86,6 +94,17 @@ const Folders = {
       if (cur) depth++;
     }
     return depth;
+  },
+
+  // Levels of nesting below this folder (0 = no subfolders).
+  _heightOf(id, folders, seen = new Set()) {
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    let h = 0;
+    folders.forEach((f) => {
+      if (f.parentId === id) h = Math.max(h, 1 + this._heightOf(f.id, folders, seen));
+    });
+    return h;
   },
 
   // Depth-first flat list [{folder, depth}] for menus.
@@ -166,6 +185,161 @@ const Folders = {
     this.render();
   },
 
+  // -- drag & drop engine -------------------------------------------------
+  // Draggables: chats in the sidebar, chats inside folders, and folders.
+  // Drop targets: any folder (head or expanded body), plus a "top level" strip
+  // that appears while dragging something that is currently inside a folder.
+
+  _beginDrag(drag, srcEl) {
+    this._drag = drag;
+    // Defer DOM changes: mutating the page synchronously in dragstart can cancel
+    // the drag in Chromium.
+    setTimeout(() => {
+      if (this._drag !== drag) return;
+      if (srcEl) {
+        srcEl.classList.add('deepblue-dragging');
+        this._dragSrc = srcEl;
+      }
+      this._updateRootStrip();
+    }, 0);
+  },
+
+  _endDrag() {
+    this._drag = null;
+    this._cancelExpand();
+    this._setOver(null);
+    if (this._dragSrc) this._dragSrc.classList.remove('deepblue-dragging');
+    this._dragSrc = null;
+    document.querySelectorAll('.deepblue-dragging').forEach((el) => el.classList.remove('deepblue-dragging'));
+    if (this._rootStrip) this._rootStrip.style.display = 'none';
+  },
+
+  _updateRootStrip() {
+    const strip = this._rootStrip;
+    if (!strip) return;
+    if (!this._drag || !this._canDrop(null)) {
+      strip.style.display = 'none';
+      return;
+    }
+    strip.textContent = Lang.t(
+      this._drag.type === 'folder' ? 'folders.drop.root' : 'folders.drop.unfile'
+    );
+    strip.style.display = 'block';
+  },
+
+  // targetId === null means "top level / not in any folder".
+  _canDrop(targetId) {
+    const d = this._drag;
+    if (!d) return false;
+    const folders = this._getFolders();
+
+    if (d.type === 'conv') {
+      const current = this._getAssignments()[d.id] || null;
+      if (targetId === null) return !!current;
+      return current !== targetId && folders.some((f) => f.id === targetId);
+    }
+
+    const dragged = folders.find((f) => f.id === d.id);
+    if (!dragged) return false;
+    const hasParent = !!dragged.parentId && folders.some((f) => f.id === dragged.parentId);
+    if (targetId === null) return hasParent;
+    if (!folders.some((f) => f.id === targetId)) return false;
+    if (targetId === d.id || this._descendantIds(d.id, folders).has(targetId)) return false;
+    if (dragged.parentId === targetId) return false;
+    // The whole dragged subtree must still fit within the max nesting depth.
+    return (
+      this._depthOf(targetId, folders) + 1 + this._heightOf(d.id, folders) <=
+      CONFIG.folders.maxDepth - 1
+    );
+  },
+
+  _applyDrop(drag, targetId) {
+    if (drag.type === 'conv') {
+      if (targetId) this._expanded[targetId] = true;
+      this._assign(drag.id, targetId);
+      return;
+    }
+    const folders = this._getFolders();
+    const folder = folders.find((f) => f.id === drag.id);
+    if (!folder) return;
+    if (targetId) {
+      folder.parentId = targetId;
+      this._expanded[targetId] = true;
+    } else {
+      delete folder.parentId;
+    }
+    this._saveFolders(folders);
+    this.render();
+  },
+
+  _setOver(el) {
+    if (this._overEl && this._overEl !== el) this._overEl.classList.remove('deepblue-drop-over');
+    this._overEl = el;
+    if (el) el.classList.add('deepblue-drop-over');
+  },
+
+  // Auto-expand a collapsed folder after hovering it mid-drag, so nested
+  // folders deeper in the tree are reachable.
+  _scheduleExpand(folderId) {
+    if (this._expandFor === folderId) return;
+    this._cancelExpand();
+    this._expandFor = folderId;
+    if (this._expanded[folderId]) return;
+    this._expandTimer = setTimeout(() => {
+      this._expandTimer = null;
+      if (!this._drag || this._expandFor !== folderId) return;
+      this._expanded[folderId] = true;
+      const wrap = document.querySelector(`.deepblue-folder-row[data-folder-id="${folderId}"]`);
+      const folders = this._getFolders();
+      const folder = folders.find((f) => f.id === folderId);
+      if (!wrap || !folder) return;
+      // Re-render only this subtree so the element being dragged stays in the DOM.
+      this._overEl = null;
+      wrap.replaceWith(
+        this._buildFolderRow(folder, this._getAssignments(), folders, this._depthOf(folderId, folders))
+      );
+    }, 600);
+  },
+
+  _cancelExpand() {
+    if (this._expandTimer) clearTimeout(this._expandTimer);
+    this._expandTimer = null;
+    this._expandFor = null;
+  },
+
+  // Wires `el` as a drop zone for `targetId` (null = top level). The innermost
+  // zone wins because handlers stop propagation.
+  _bindDropZone(el, targetId, highlightEl) {
+    const hl = () => (typeof highlightEl === 'function' ? highlightEl() : highlightEl || el);
+    el.addEventListener('dragover', (e) => {
+      if (!this._drag) return;
+      e.stopPropagation();
+      if (!this._canDrop(targetId)) {
+        this._setOver(null);
+        if (targetId) this._cancelExpand();
+        return;
+      }
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      this._setOver(hl());
+      if (targetId) this._scheduleExpand(targetId);
+    });
+    el.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+      if (this._overEl === hl()) this._setOver(null);
+      if (targetId && this._expandFor === targetId) this._cancelExpand();
+    });
+    el.addEventListener('drop', (e) => {
+      if (!this._drag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const drag = this._drag;
+      const ok = this._canDrop(targetId);
+      this._endDrag();
+      if (ok) this._applyDrop(drag, targetId);
+    });
+  },
+
   // -- top-level section (folder list + "new folder") ------------------
 
   _buildSection() {
@@ -242,6 +416,24 @@ const Folders = {
     list.id = CONFIG.ids.folderList;
     list.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
     section.appendChild(list);
+
+    // "Move out" drop strip, only visible while dragging something that
+    // currently lives inside a folder.
+    const strip = document.createElement('div');
+    strip.className = 'deepblue-folder-rootdrop';
+    strip.style.cssText = `
+ display: none;
+ margin-top: 6px;
+ padding: 8px;
+ border: 1.5px dashed var(--db-border);
+ border-radius: var(--db-radius-sm);
+ font-size: 11.5px;
+ text-align: center;
+ color: var(--db-text-tertiary);
+ `;
+    section.appendChild(strip);
+    this._rootStrip = strip;
+    this._bindDropZone(section, null, strip);
 
     this._section = section;
     this._list = list;
@@ -416,28 +608,23 @@ const Folders = {
       this._toggleFolderMenu(folder, moreBtn);
     });
 
-    // Drag-and-drop target
-    head.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      head.style.background = 'var(--db-accent-soft)';
-      head.style.outline = `1.5px dashed ${folder.color}`;
+    // Drag source: the folder itself can be moved into another folder.
+    head.draggable = true;
+    head.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      try {
+        e.dataTransfer.setData('text/deepblue-folder-id', folder.id);
+      } catch (err) {
+        // _drag below is the reliable source of truth.
+      }
+      e.dataTransfer.effectAllowed = 'move';
+      this._beginDrag({ type: 'folder', id: folder.id }, wrap);
     });
-    head.addEventListener('dragleave', () => {
-      head.style.background = baseBg;
-      head.style.outline = 'none';
-    });
-    head.addEventListener('drop', (e) => {
-      e.preventDefault();
-      head.style.background = baseBg;
-      head.style.outline = 'none';
-      const convId =
-        this._draggingConvId ||
-        e.dataTransfer.getData('text/deepblue-conv-id') ||
-        e.dataTransfer.getData('text/plain');
-      this._draggingConvId = null;
-      if (convId) this._assign(convId, folder.id);
-    });
+    head.addEventListener('dragend', () => this._endDrag());
+
+    // Drop target: the whole row (head + expanded body) accepts chats/folders.
+    wrap.style.setProperty('--db-drop-color', folder.color);
+    this._bindDropZone(wrap, folder.id);
 
     wrap.appendChild(head);
 
@@ -495,6 +682,19 @@ const Folders = {
     row.addEventListener('mouseleave', () => {
       row.style.background = 'none';
     });
+
+    row.draggable = true;
+    row.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      try {
+        e.dataTransfer.setData('text/deepblue-conv-id', convId);
+      } catch (err) {
+        // _drag below is the reliable source of truth.
+      }
+      e.dataTransfer.effectAllowed = 'move';
+      this._beginDrag({ type: 'conv', id: convId }, row);
+    });
+    row.addEventListener('dragend', () => this._endDrag());
 
     row.innerHTML = `
  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; color:var(--db-text-tertiary);">
@@ -677,6 +877,8 @@ const Folders = {
  padding: 1px 4px; font-family: inherit; outline: none; width: 100%;
  `;
 
+    const headEl = row.closest('.deepblue-folder-head');
+    if (headEl) headEl.draggable = false; // lets the mouse select text inside the input
     row.replaceWith(input);
     input.focus();
     input.select();
@@ -714,19 +916,17 @@ const Folders = {
 
     link.draggable = true;
     link.addEventListener('dragstart', (e) => {
-      this._draggingConvId = convId;
       try {
         e.dataTransfer.setData('text/plain', convId);
         e.dataTransfer.setData('text/deepblue-conv-id', convId);
       } catch (err) {
         // Some browsers throw on custom MIME types in certain contexts;
-        // _draggingConvId above is the reliable fallback for same-page drags.
+        // _drag (set via _beginDrag below) is the reliable fallback for same-page drags.
       }
       e.dataTransfer.effectAllowed = 'move';
+      this._beginDrag({ type: 'conv', id: convId }, link);
     });
-    link.addEventListener('dragend', () => {
-      this._draggingConvId = null;
-    });
+    link.addEventListener('dragend', () => this._endDrag());
 
     const btn = document.createElement('div');
     btn.className = 'deepblue-add-to-folder-btn';
@@ -844,6 +1044,10 @@ const Folders = {
   _wireGlobalListeners() {
     if (this._globalWired) return;
     this._globalWired = true;
+    // Safety net: clear drag state if a drag ends or is dropped somewhere that
+    // isn't one of our drop zones.
+    document.addEventListener('dragend', () => this._endDrag());
+    document.addEventListener('drop', () => this._endDrag());
     document.addEventListener('click', (e) => {
       const menu = document.getElementById(CONFIG.ids.folderMenu);
       if (
@@ -864,6 +1068,13 @@ const Folders = {
     style.id = 'deepblue-folder-styles';
     style.textContent = `
  #${CONFIG.ids.folderSection} button { font-family: inherit; }
+ .deepblue-drop-over {
+   background: var(--db-accent-soft) !important;
+   outline: 1.5px dashed var(--db-drop-color, var(--db-accent)) !important;
+   outline-offset: -1px;
+   border-radius: var(--db-radius-sm);
+ }
+ .deepblue-dragging { opacity: 0.45; }
  `;
     document.head.appendChild(style);
   },
