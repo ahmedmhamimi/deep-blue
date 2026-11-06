@@ -2,7 +2,7 @@
 // Diagram button (features/diagram-handoff.js) for EXISTING users.
 //
 // Who sees it, once (background.js claimAnnouncement): people updating from
-// before 1.6 on their next DeepSeek visit, and new installs only after
+// before 1.5 on their next DeepSeek visit, and new installs only after
 // DeepSeek has been opened on 3 different days - never in a new user's first
 // days. Exactly one DeepSeek tab claims it. Showing it arms the Diagram
 // button's spotlight (DiagramHandoff.armSpotlight), which also waits for it.
