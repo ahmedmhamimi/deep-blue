@@ -17,6 +17,7 @@ const BRAND_NAME = 'DeepBlue';
 
 const CONFIG = {
   ids: {
+    vamimiLink: 'deepblue-vamimi-link',
     exportBtn: 'deepblue-export-pdf-btn',
     copyConversationBtn: 'deepblue-copy-conversation-btn',
     counter: 'deepblue-char-counter',
@@ -88,6 +89,9 @@ const CONFIG = {
     sidebarConversationLink: 'a._546d736',
     sidebarConversationTitle: '.c08e6e93',
     sidebarConversationHref: 'a._546d736[href*="/chat/s/"]',
+    // The account row at the very bottom of the sidebar (avatar + name).
+    // It shares _7b40dad with the New chat row, so both classes are needed.
+    sidebarProfileRow: '._7b40dad.f14f3a6d',
   },
   charCounter: {
     warnAt: 500,

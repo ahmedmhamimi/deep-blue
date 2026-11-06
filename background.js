@@ -28,7 +28,7 @@ const WELCOME_KEY = 'deepblue-welcome-pending-v1';
 // welcome splash and DeepBlue itself. The Diagram button's spotlight is
 // armed by the announcement when it shows, never before.
 const ANNOUNCE_KEY = 'deepblue-announce-v1';
-const ANNOUNCE_SINCE = '1.6';
+const ANNOUNCE_SINCE = '1.5';
 const NEW_USER_DAYS = 3;
 // Keep in step with CONFIG.diagram.appUrl in src/config.js.
 const DIAGRAM_ORIGIN = 'https://www.vamimi.com';

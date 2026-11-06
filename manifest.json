@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "default_locale": "en",
   "name": "__MSG_extName__",
-  "version": "1.6",
+  "version": "1.5",
   "description": "__MSG_extDescription__",
   "permissions": ["storage"],
   "background": {
@@ -57,6 +57,7 @@
         "src/pdf/pdf-export.js",
         "src/features/message-pdf-export.js",
         "src/features/diagram-handoff.js",
+        "src/features/vamimi-link.js",
 
         "src/bootstrap.js"
       ],

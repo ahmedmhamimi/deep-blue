@@ -633,3 +633,30 @@ html[data-db-theme="dark"] .deepblue-diagram-btn.is-spotlit { color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .deepblue-diagram-btn.is-spotlit, .deepblue-diagram-coach, .deepblue-diagram-hint { animation: none; }
 }
+
+/* ==========================================================================
+   Permanent VamimiAI link above the sidebar's profile row
+   (features/vamimi-link.js). Same height, padding and radius as DeepSeek's
+   own conversation rows; still, no animation. The arrow shows on hover.
+   ========================================================================== */
+
+.deepblue-vamimi-link {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  margin: 6px 0 4px; padding: 7px 10px 7px 8px; border-radius: 12px;
+  color: var(--db-text); text-decoration: none; cursor: pointer;
+  transition: background 0.15s ease;
+}
+.deepblue-vamimi-link:hover { background: var(--db-surface-hover); }
+.deepblue-vamimi-link:focus-visible { outline: none; box-shadow: var(--db-ring); }
+.deepblue-vamimi-link__tile {
+  flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  color: #fff; background: var(--db-accent-grad);
+}
+.deepblue-vamimi-link__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.deepblue-vamimi-link__text b { font-size: 14px; font-weight: 600; }
+.deepblue-vamimi-link__text small {
+  font-size: 12px; color: var(--db-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deepblue-vamimi-link__go { flex: none; color: var(--db-text-tertiary); opacity: 0; transition: opacity 0.15s ease; }
+.deepblue-vamimi-link:hover .deepblue-vamimi-link__go,
+.deepblue-vamimi-link:focus-visible .deepblue-vamimi-link__go { opacity: 1; }
