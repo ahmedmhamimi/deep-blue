@@ -1,12 +1,14 @@
-// whats-new.js - one-time "subfolders are here" card for EXISTING users.
+// whats-new.js - one-time "turn any reply into a diagram" card for
+// EXISTING users (features/diagram-handoff.js).
 //
 // Who sees it: only people who already had DeepBlue installed and just
-// updated to 1.3. background.js raises a "pending" flag on that update (and
-// never on a fresh install, where the welcome splash already introduces
-// folders), and exactly one DeepSeek tab claims it, so it is shown once.
+// updated to 1.5. background.js raises a "pending" flag on that update (and
+// never on a fresh install), and exactly one DeepSeek tab claims it, so it
+// is shown once.
 //
-// It's a quiet card in the bottom-left corner, near the sidebar it talks
-// about. It does not block the page, and stays until dismissed.
+// It's a quiet card in the bottom-left corner. It does not block the page,
+// and stays until dismissed. Its small picture - reply lines turning into a
+// three-step diagram - plays once and ends still.
 //
 // Depends on: ui-kit.js, i18n.js (Lang), theme.js (Theme), utils.js (escapeHtml).
 
@@ -48,15 +50,6 @@ const WhatsNew = {
     const t = (k) => escapeHtml(Lang.t(k));
     const { host, root } = UiKit.createHost(this._HOST_ID);
 
-    const folderSvg = (hex) => `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M3 7C3 5.9 3.9 5 5 5H9L11 7H19C20.1 7 21 7.9 21 9V17C21 18.1 20.1 19 19 19H5C3.9 19 3 18.1 3 17V7Z"
-          fill="${hex}" fill-opacity="0.28" stroke="${hex}" stroke-width="1.8" stroke-linejoin="round"/>
-      </svg>`;
-    const plus = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
-    const chevron = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`;
-
-    const blue = '#3964fe';
     root.innerHTML = `
       <style>${UiKit.baseCss}${this._css()}</style>
       <div class="dock">
@@ -68,19 +61,17 @@ const WhatsNew = {
           <p class="body">${t('whatsnew.body')}</p>
 
           <div class="demo" aria-hidden="true">
-            <div class="row r0" style="--d:260ms">
-              <span class="chev open">${chevron}</span>${folderSvg(blue)}<b>${t('whatsnew.demo1')}</b>
-              <span class="add">${plus}</span>
+            <div class="reply">
+              <i style="--d:200ms;--w:92%"></i><i style="--d:280ms;--w:74%"></i><i style="--d:360ms;--w:84%"></i>
+              <small>${t('whatsnew.demo1')}</small>
             </div>
-            <div class="nest n1">
-              <div class="row r1" style="--d:520ms">
-                <span class="chev open">${chevron}</span>${folderSvg('#6c5ce7')}<b>${t('whatsnew.demo2')}</b>
-              </div>
-              <div class="nest n2">
-                <div class="row r2" style="--d:780ms">
-                  <span class="chev">${chevron}</span>${folderSvg('#22c55e')}<b>${t('whatsnew.demo3')}</b>
-                </div>
-              </div>
+            <span class="arrow" style="--d:560ms">→</span>
+            <div class="flow">
+              <b class="node" style="--d:760ms">${t('whatsnew.demo2')} 1</b>
+              <span class="link" style="--d:940ms"></span>
+              <b class="node" style="--d:1040ms">${t('whatsnew.demo2')} 2</b>
+              <span class="link" style="--d:1220ms"></span>
+              <b class="node ok" style="--d:1320ms">${t('whatsnew.demo3')}</b>
             </div>
           </div>
 
@@ -124,19 +115,20 @@ const WhatsNew = {
     h2 { margin: 10px 0 4px; font-size: 18px; line-height: 1.2; font-weight: 750; letter-spacing: -.015em; padding-right: 24px; }
     .body { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
 
-    .demo { margin: 14px 0 0; padding: 10px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
-    .row { display: flex; align-items: center; gap: 7px; padding: 5px 6px; border-radius: 8px; font-size: 12.5px;
-      opacity: 0; transform: translateX(-8px); animation: slideIn 520ms var(--d, 0ms) var(--ease) forwards; }
-    .row b { font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .row svg { flex: none; }
-    .chev { display: grid; color: var(--text-3); transition: transform 200ms ease; }
-    .chev.open { transform: rotate(90deg); }
-    .nest { margin-left: 11px; padding-left: 9px; border-left: 2px solid rgba(var(--accent-rgb), .45); }
-    .nest.n2 { border-left-color: rgba(108, 92, 231, .5); }
-    .r1 { background: rgba(108, 92, 231, .10); }
-    .r2 { background: rgba(34, 197, 94, .10); }
-    .add { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; flex: none;
-      color: var(--accent); background: rgba(var(--accent-rgb), .14); animation: nudge 2.4s 1.4s ease-in-out infinite; }
+    .demo { margin: 14px 0 0; padding: 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; }
+    .reply { flex: 1; min-width: 0; display: grid; gap: 6px; }
+    .reply i { display: block; height: 7px; width: var(--w); border-radius: 4px; background: var(--border);
+      opacity: 0; animation: fadeIn 360ms var(--d, 0ms) var(--ease) forwards; }
+    .reply small { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .arrow { color: var(--accent); font-weight: 700; opacity: 0; animation: fadeIn 360ms var(--d) var(--ease) forwards; }
+    .flow { flex: none; display: flex; flex-direction: column; align-items: center; }
+    .node { padding: 3px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+      color: var(--accent); background: rgba(var(--accent-rgb), .12); border: 1px solid rgba(var(--accent-rgb), .35);
+      opacity: 0; transform: translateY(-4px); animation: slideIn 420ms var(--d) var(--ease) forwards; }
+    .node.ok { color: #16a34a; background: rgba(34, 197, 94, .12); border-color: rgba(34, 197, 94, .4); }
+    .link { width: 2px; height: 8px; background: rgba(var(--accent-rgb), .45); transform: scaleY(0); transform-origin: top;
+      animation: grow 200ms var(--d) ease-out forwards; }
 
     .hint { margin: 12px 0 0; font-size: 12px; color: var(--text-3); line-height: 1.45; }
     .cta { width: 100%; height: 40px; margin-top: 12px; border-radius: 12px; font-size: 14px; font-weight: 650;
@@ -150,8 +142,9 @@ const WhatsNew = {
     @keyframes cardIn { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
     @keyframes cardOut { to { opacity: 0; transform: translateY(10px) scale(.98); } }
     @keyframes slideIn { to { opacity: 1; transform: none; } }
+    @keyframes fadeIn { to { opacity: 1; } }
+    @keyframes grow { to { transform: scaleY(1); } }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), .5); } 100% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0); } }
-    @keyframes nudge { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.22); } 90% { transform: scale(1); } }
     `;
   },
 };

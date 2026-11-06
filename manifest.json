@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "default_locale": "en",
   "name": "__MSG_extName__",
-  "version": "1.4",
+  "version": "1.5",
   "description": "__MSG_extDescription__",
   "permissions": ["storage"],
   "background": {
@@ -56,6 +56,7 @@
         "src/pdf/renderer.js",
         "src/pdf/pdf-export.js",
         "src/features/message-pdf-export.js",
+        "src/features/diagram-handoff.js",
 
         "src/bootstrap.js"
       ],

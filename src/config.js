@@ -174,6 +174,15 @@ const CONFIG = {
       },
     ],
   },
+  // "Turn into a diagram" (features/diagram-handoff.js): where a reply is
+  // sent, how the visit is labelled, and the size limits. maxUrlChars stays
+  // under Chrome's 2 MB URL ceiling; background.js opens only appUrl's origin.
+  diagram: {
+    appUrl: 'https://www.vamimi.com/',
+    utm: { source: 'deepblue', medium: 'extension', campaign: 'diagram_button' },
+    maxUrlChars: 1900000,
+    maxQuestionChars: 1500,
+  },
   // Chrome Web Store identity + the post-install / review experience.
   // All numbers below are deliberate - see the psychology notes in
   // src/review-prompt.js for why each one is what it is.
