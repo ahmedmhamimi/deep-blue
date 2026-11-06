@@ -6,6 +6,8 @@
 //      (so the freshly installed content scripts attach) and focusing one, or
 //      opening a new tab when none exist.
 //   2. Always keep the uninstall survey URL registered.
+//   3. Open VamimiAI in a new tab for features/diagram-handoff.js (only that
+//      origin; the reply travels in the URL fragment, never to a server).
 
 'use strict';
 
@@ -15,10 +17,12 @@ const UNINSTALL_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSfSLeAlAR99XVRds06ysehhihgkG3NE4ejHx6cJOTdZr0teNQ/viewform?usp=publish-editor';
 const REVIEW_STATE_KEY = 'deepblue-review-state-v1';
 const WELCOME_KEY = 'deepblue-welcome-pending-v1';
-const WHATSNEW_KEY = 'deepblue-whatsnew-subfolders-pending-v1';
-// Subfolders shipped in this version; anyone updating from an older one gets
-// the one-time "what's new" card. Fresh installs never do.
-const WHATSNEW_SINCE = '1.3';
+const WHATSNEW_KEY = 'deepblue-whatsnew-diagram-pending-v1';
+// "Turn into a diagram" shipped in this version; anyone updating from an
+// older one gets the one-time "what's new" card. Fresh installs never do.
+const WHATSNEW_SINCE = '1.5';
+// Keep in step with CONFIG.diagram.appUrl in src/config.js.
+const DIAGRAM_ORIGIN = 'https://www.vamimi.com';
 
 // true if dotted version a is older than b (missing parts count as 0)
 function isOlder(a, b) {
@@ -106,7 +110,36 @@ const CLAIMS = {
   'deepblue:claim-whatsnew': WHATSNEW_KEY,
 };
 
+// A new tab right after the DeepSeek tab the button was clicked in.
+function openDiagram(msg, sender, sendResponse) {
+  let url;
+  try {
+    url = new URL(msg.url);
+  } catch (err) {
+    sendResponse({ ok: false });
+    return false;
+  }
+  if (url.origin !== DIAGRAM_ORIGIN) {
+    sendResponse({ ok: false });
+    return false;
+  }
+  const tab = sender?.tab;
+  chrome.tabs
+    .create({
+      url: url.toString(),
+      active: true,
+      ...(tab ? { index: tab.index + 1, openerTabId: tab.id, windowId: tab.windowId } : {}),
+    })
+    .then(() => sendResponse({ ok: true }))
+    .catch((err) => {
+      console.debug('DeepBlue: could not open VamimiAI', err);
+      sendResponse({ ok: false });
+    });
+  return true; // async response
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === 'deepblue:open-diagram') return openDiagram(msg, _sender, sendResponse);
   const key = CLAIMS[msg?.type];
   if (!key) return false;
 

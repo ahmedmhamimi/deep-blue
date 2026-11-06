@@ -60,6 +60,7 @@ function runScan() {
 
   CopyPlain.scan(messages);
   MessagePdfExport.scan(messages);
+  DiagramHandoff.scan(messages);
   Bookmarks.scan(messages);
   QuickActions.scan(messages, sidebarLinks);
 }
