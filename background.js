@@ -21,6 +21,9 @@ const WHATSNEW_KEY = 'deepblue-whatsnew-diagram-pending-v1';
 // "Turn into a diagram" shipped in this version; anyone updating from an
 // older one gets the one-time "what's new" card. Fresh installs never do.
 const WHATSNEW_SINCE = '1.5';
+// The Diagram button's first-run spotlight (features/diagram-handoff.js),
+// armed for new installs and for anyone updating from before WHATSNEW_SINCE.
+const SPOTLIGHT_KEY = 'deepblue-diagram-spotlight-v1';
 // Keep in step with CONFIG.diagram.appUrl in src/config.js.
 const DIAGRAM_ORIGIN = 'https://www.vamimi.com';
 
@@ -88,6 +91,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         status: 'pending',
         nextEligibleAt: 0,
       },
+      [SPOTLIGHT_KEY]: { armed: true, pages: 0 },
     });
     await goToDeepSeek();
   } else if (
@@ -95,7 +99,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     details.previousVersion &&
     isOlder(details.previousVersion, WHATSNEW_SINCE)
   ) {
-    await chrome.storage.local.set({ [WHATSNEW_KEY]: true });
+    await chrome.storage.local.set({
+      [WHATSNEW_KEY]: true,
+      [SPOTLIGHT_KEY]: { armed: true, pages: 0 },
+    });
   }
 });
 
