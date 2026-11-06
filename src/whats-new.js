@@ -1,10 +1,11 @@
 // whats-new.js - one-time full-screen announcement of VamimiAI and the
 // Diagram button (features/diagram-handoff.js) for EXISTING users.
 //
-// Who sees it: only people who already had DeepBlue installed and just
-// updated to 1.5. background.js raises a "pending" flag on that update (and
-// never on a fresh install), and exactly one DeepSeek tab claims it, so it
-// is shown once.
+// Who sees it, once (background.js claimAnnouncement): people updating from
+// before 1.6 on their next DeepSeek visit, and new installs only after
+// DeepSeek has been opened on 3 different days - never in a new user's first
+// days. Exactly one DeepSeek tab claims it. Showing it arms the Diagram
+// button's spotlight (DiagramHandoff.armSpotlight), which also waits for it.
 //
 // What it has to answer, in this order: what VamimiAI is (a website that
 // turns text into diagrams), what that looks like (the hero picture: reply
@@ -107,6 +108,7 @@ const WhatsNew = {
 
     host.style.pointerEvents = 'auto';
     document.documentElement.appendChild(host);
+    DiagramHandoff.armSpotlight();
 
     const card = root.querySelector('.card');
     const cta = root.querySelector('.cta');

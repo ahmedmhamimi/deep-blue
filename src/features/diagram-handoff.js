@@ -14,9 +14,10 @@
 //   on every scan, so the button appears once it qualifies.
 //
 // BEING FOUND (the spotlight)
-//   It is a labelled pill, not a bare grey icon. For the first replies
-//   after install or the 1.5 update (background.js arms SPOTLIGHT_KEY) the
-//   newest button in view glows, shakes twice and gets a pointer bubble.
+//   It is a labelled pill, not a bare grey icon. Once the VamimiAI
+//   announcement has been shown (whats-new.js calls armSpotlight - never
+//   during a new user's first days) the newest button in view glows,
+//   shakes twice and gets a pointer bubble.
 //   The announcement's "Show me the button" (whats-new.js -> spotlightNow)
 //   scrolls to it, or - in a chat with no reply yet - says to ask
 //   something first and spotlights the first reply that qualifies. It ends
@@ -157,6 +158,13 @@ const DiagramHandoff = {
     } catch (err) {
       /* extension reloaded */
     }
+  },
+
+  // Called when the announcement shows: the next pages spotlight the button.
+  armSpotlight() {
+    this._spot = { armed: true, pages: 0 };
+    this._spotLoading = Promise.resolve(this._spot);
+    this._saveSpot();
   },
 
   // The newest button that is actually on screen.
