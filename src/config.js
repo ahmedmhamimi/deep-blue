@@ -182,6 +182,14 @@ const CONFIG = {
     utm: { source: 'deepblue', medium: 'extension', campaign: 'diagram_button' },
     maxUrlChars: 1900000,
     maxQuestionChars: 1500,
+    // Replies shorter than this get no button unless they have a list,
+    // table, heading or code block ("Hey! What's on your mind?" has nothing to draw).
+    minChars: 200,
+    // The spotlight (glow, shake, pointer bubble) runs on at most this many
+    // page loads after install or the 1.5 update, or until the button is used.
+    spotlightPages: 3,
+    coachMs: 9000,
+    hintMs: 9000,
   },
   // Chrome Web Store identity + the post-install / review experience.
   // All numbers below are deliberate - see the psychology notes in

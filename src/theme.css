@@ -553,3 +553,83 @@ html[data-db-theme="dark"] .db-tooltip {
    ========================================================================== */
 
 .deepblue-qa-toast { animation: db-rise-in 180ms var(--db-ease) !important; }
+
+/* ==========================================================================
+   "Turn into a diagram" (features/diagram-handoff.js)
+   A labelled pill, not a bare icon: it has to be found among DeepSeek's own
+   grey icons. While spotlit (first replies after install/update, or after
+   "Show me the button" in the announcement) it glows, shakes twice and gets
+   a pointer bubble. Every animation runs a fixed number of times and ends
+   still; reduced motion gets the steady end state only.
+   ========================================================================== */
+
+.deepblue-diagram-btn {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  height: 28px; padding: 0 10px 0 8px; margin-left: 4px; border-radius: 999px;
+  border: 1px solid rgba(var(--db-accent-rgb), 0.28);
+  background: rgba(var(--db-accent-rgb), 0.08); color: var(--db-accent);
+  font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; letter-spacing: 0.005em; white-space: nowrap; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+html[data-db-theme="dark"] .deepblue-diagram-btn { color: #9db4ff; }
+.deepblue-diagram-btn:hover { background: rgba(var(--db-accent-rgb), 0.16); border-color: rgba(var(--db-accent-rgb), 0.5); }
+.deepblue-diagram-btn:active { transform: scale(0.96); }
+.deepblue-diagram-btn[disabled] { cursor: default; opacity: 0.8; }
+.deepblue-diagram-btn svg { flex: none; }
+
+.deepblue-diagram-btn.is-spotlit {
+  position: relative; color: var(--db-text-on-accent); background: var(--db-accent-grad); border-color: transparent;
+  animation: db-diagram-glow 1.6s ease-out 4, db-diagram-shake 0.7s 0.35s ease-in-out 1, db-diagram-shake 0.7s 3.6s ease-in-out 1;
+  box-shadow: 0 0 0 4px rgba(var(--db-accent-rgb), 0.18), 0 6px 18px -4px rgba(var(--db-accent-rgb), 0.6);
+}
+html[data-db-theme="dark"] .deepblue-diagram-btn.is-spotlit { color: #fff; }
+
+@keyframes db-diagram-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--db-accent-rgb), 0.6), 0 6px 18px -4px rgba(var(--db-accent-rgb), 0.6); }
+  70%  { box-shadow: 0 0 0 14px rgba(var(--db-accent-rgb), 0), 0 6px 18px -4px rgba(var(--db-accent-rgb), 0.6); }
+  100% { box-shadow: 0 0 0 4px rgba(var(--db-accent-rgb), 0.18), 0 6px 18px -4px rgba(var(--db-accent-rgb), 0.6); }
+}
+@keyframes db-diagram-shake {
+  0%, 100% { transform: none; }
+  15% { transform: rotate(-7deg) scale(1.06); }
+  30% { transform: rotate(6deg) scale(1.06); }
+  45% { transform: rotate(-5deg) scale(1.04); }
+  60% { transform: rotate(3deg) scale(1.02); }
+  75% { transform: rotate(-1deg); }
+}
+
+/* pointer bubble above the spotlit button (positioned by JS, fixed) */
+.deepblue-diagram-coach {
+  position: fixed; z-index: 2147483000; max-width: 260px;
+  display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 12px; border-radius: 12px;
+  background: var(--db-text); color: var(--db-bg); box-shadow: var(--db-shadow-lg);
+  font: 600 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+  animation: db-coach-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both, db-coach-bob 1.2s 0.5s ease-in-out 3;
+}
+.deepblue-diagram-coach::after {
+  content: ""; position: absolute; left: var(--arrow-x, 50%); bottom: -6px; width: 12px; height: 12px;
+  margin-left: -6px; background: inherit; border-radius: 2px; transform: rotate(45deg);
+}
+.deepblue-diagram-coach.below::after { bottom: auto; top: -6px; }
+.deepblue-diagram-coach button {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+  display: grid; place-items: center; color: inherit; background: rgba(127, 127, 127, 0.25); font-size: 13px; line-height: 1;
+}
+.deepblue-diagram-coach.out { animation: db-fade-in 200ms ease reverse forwards; }
+@keyframes db-coach-in { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes db-coach-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-4px); } }
+
+/* "ask something first" hint when the chat has no reply yet */
+.deepblue-diagram-hint {
+  position: fixed; z-index: 2147483000; left: 0; right: 0; bottom: 140px; margin: 0 auto; width: fit-content;
+  max-width: min(440px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 14px;
+  background: var(--db-text); color: var(--db-bg); box-shadow: var(--db-shadow-lg); text-align: center;
+  font: 500 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  animation: db-rise-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.deepblue-diagram-hint b { font-weight: 700; }
+.deepblue-diagram-hint.out { animation: db-fade-in 240ms ease reverse forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deepblue-diagram-btn.is-spotlit, .deepblue-diagram-coach, .deepblue-diagram-hint { animation: none; }
+}
